@@ -1,0 +1,181 @@
+{
+  "description": "CloudFlare WAF Rules for DDoS and Security Protection",
+  "rules": [
+    {
+      "id": "block_known_bad_bots",
+      "action": "block",
+      "expression": "(http.user_agent contains \"masscan\") or (http.user_agent contains \"nmap\") or (http.user_agent contains \"nikto\") or (http.user_agent contains \"sqlmap\")",
+      "description": "Block known attack tools"
+    },
+    {
+      "id": "rate_limit_api_general",
+      "action": "challenge",
+      "expression": "(http.request.uri.path contains \"/api/\") and (rate(5m) > 1000)",
+      "description": "Challenge high-volume API requests"
+    },
+    {
+      "id": "rate_limit_auth_endpoints",
+      "action": "block",
+      "expression": "(http.request.uri.path eq \"/api/auth/login\" or http.request.uri.path eq \"/api/auth/register\") and (rate(15m) > 10)",
+      "description": "Strict rate limit on auth endpoints"
+    },
+    {
+      "id": "block_sql_injection",
+      "action": "block",
+      "expression": "(http.request.uri.query contains \"union select\") or (http.request.uri.query contains \"1=1\") or (http.request.uri.query contains \"drop table\")",
+      "description": "Block SQL injection attempts"
+    },
+    {
+      "id": "block_xss_attempts",
+      "action": "block",
+      "expression": "(http.request.uri.query contains \"<script\") or (http.request.uri.query contains \"javascript:\") or (http.request.uri.query contains \"onerror=\")",
+      "description": "Block XSS attempts"
+    },
+    {
+      "id": "geo_blocking",
+      "action": "block",
+      "expression": "ip.geoip.country in {\"CN\" \"RU\" \"KP\"}",
+      "description": "Block requests from high-risk countries (configurable)"
+    },
+    {
+      "id": "block_tor_vpn",
+      "action": "challenge",
+      "expression": "cf.threat_score > 50",
+      "description": "Challenge requests from Tor/VPN"
+    },
+    {
+      "id": "challenge_no_user_agent",
+      "action": "challenge",
+      "expression": "not http.user_agent",
+      "description": "Challenge requests without User-Agent"
+    },
+    {
+      "id": "block_large_payloads",
+      "action": "block",
+      "expression": "http.request.body.size > 10485760",
+      "description": "Block requests larger than 10MB"
+    },
+    {
+      "id": "challenge_rapid_requests",
+      "action": "challenge",
+      "expression": "rate(10s) > 100",
+      "description": "Challenge extremely rapid requests (burst attack)"
+    },
+    {
+      "id": "block_bad_http_methods",
+      "action": "block",
+      "expression": "http.request.method in {\"TRACE\" \"TRACK\" \"DEBUG\"}",
+      "description": "Block dangerous HTTP methods"
+    },
+    {
+      "id": "challenge_missing_headers",
+      "action": "challenge",
+      "expression": "(not http.referer or not http.user_agent) and (http.request.uri.path contains \"/api/\")",
+      "description": "Challenge API requests missing standard headers"
+    },
+    {
+      "id": "block_credential_stuffing",
+      "action": "block",
+      "expression": "(http.request.uri.path eq \"/api/auth/login\") and (cf.threat_score > 30) and (rate(1h) > 5)",
+      "description": "Block potential credential stuffing attacks"
+    },
+    {
+      "id": "challenge_suspicious_query_strings",
+      "action": "challenge",
+      "expression": "(len(http.request.uri.query) > 1000) or (http.request.uri.query contains \"../\") or (http.request.uri.query contains \"..\\\") or (http.request.uri.query contains \"etc/passwd\")",
+      "description": "Challenge requests with suspicious query strings"
+    },
+    {
+      "id": "block_known_bad_ips",
+      "action": "block",
+      "expression": "ip.src in $known_bad_ips",
+      "description": "Block known malicious IPs (requires IP list)"
+    }
+  ],
+  "ip_lists": {
+    "known_bad_ips": {
+      "description": "List of known malicious IP addresses",
+      "ips": []
+    }
+  },
+  "firewall_settings": {
+    "security_level": "high",
+    "challenge_passage": 1800,
+    "browser_integrity_check": true,
+    "email_obfuscation": true,
+    "server_side_exclude": true,
+    "hotlink_protection": false
+  },
+  "rate_limiting_rules": [
+    {
+      "id": "api_general_limit",
+      "match": {
+        "request": {
+          "url": "api.openmeet.com/api/*"
+        }
+      },
+      "threshold": 1000,
+      "period": 60,
+      "action": {
+        "mode": "challenge",
+        "timeout": 300
+      }
+    },
+    {
+      "id": "auth_login_limit",
+      "match": {
+        "request": {
+          "url": "api.openmeet.com/api/auth/login"
+        }
+      },
+      "threshold": 5,
+      "period": 900,
+      "action": {
+        "mode": "block",
+        "timeout": 3600
+      }
+    },
+    {
+      "id": "auth_register_limit",
+      "match": {
+        "request": {
+          "url": "api.openmeet.com/api/auth/register"
+        }
+      },
+      "threshold": 3,
+      "period": 3600,
+      "action": {
+        "mode": "block",
+        "timeout": 86400
+      }
+    },
+    {
+      "id": "upload_limit",
+      "match": {
+        "request": {
+          "url": "api.openmeet.com/api/*/upload"
+        }
+      },
+      "threshold": 10,
+      "period": 3600,
+      "action": {
+        "mode": "challenge",
+        "timeout": 1800
+      }
+    }
+  ],
+  "bot_management": {
+    "fight_mode": true,
+    "session_score_enabled": true,
+    "enable_js": true,
+    "super_bot_fight_mode": true,
+    "verified_bots_enabled": true,
+    "static_resource_protection": false
+  },
+  "ddos_protection": {
+    "http_ddos_enabled": true,
+    "layer3_layer4_ddos_enabled": true,
+    "sensitivity_level": "high",
+    "override_unmitigated": false
+  }
+}

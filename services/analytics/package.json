@@ -1,0 +1,28 @@
+{
+  "name": "@openmeet/analytics-service",
+  "version": "1.0.0",
+  "description": "Analytics and business intelligence service",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@prisma/client": "^5.8.0",
+    "ioredis": "^5.3.2",
+    "bull": "^4.11.5",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1",
+    "date-fns": "^3.0.0",
+    "prom-client": "^15.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "nodemon": "^3.0.2"
+  }
+}

@@ -1,0 +1,127 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: elasticsearch-backup
+  namespace: production
+  labels:
+    app: elasticsearch-backup
+    component: elk
+spec:
+  # Run daily at 2 AM
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: elasticsearch-backup
+            component: elk
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+            command:
+            - /bin/bash
+            - -c
+            - |
+              #!/bin/bash
+              set -e
+
+              # Run backup script
+              /scripts/backup-script.sh
+
+              # Send notification on success
+              if [ $? -eq 0 ]; then
+                echo "Backup completed successfully at $(date)"
+              else
+                echo "Backup failed at $(date)"
+                exit 1
+              fi
+            env:
+            - name: ELASTICSEARCH_URL
+              value: "http://elasticsearch:9200"
+            - name: ELASTICSEARCH_USER
+              value: "elastic"
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: password
+            - name: SNAPSHOT_REPO_NAME
+              value: "elk_backups"
+            - name: RETENTION_DAYS
+              value: "30"
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-backup-s3
+                  key: bucket
+                  optional: true
+            - name: S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-backup-s3
+                  key: region
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-backup-s3
+                  key: access-key
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-backup-s3
+                  key: secret-key
+                  optional: true
+            volumeMounts:
+            - name: backup-scripts
+              mountPath: /scripts
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+          volumes:
+          - name: backup-scripts
+            configMap:
+              name: elasticsearch-backup-scripts
+              defaultMode: 0755
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-backup-scripts
+  namespace: production
+  labels:
+    app: elasticsearch-backup
+    component: elk
+data:
+  backup-script.sh: |
+    #!/bin/bash
+    # This is a placeholder - mount the actual script from your repository
+    # Or copy the content from /home/user/openmeet-v2/infrastructure/elk/backup/backup-script.sh
+    echo "Backup script placeholder"
+
+---
+# Optional: S3 credentials for snapshot repository
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elasticsearch-backup-s3
+  namespace: production
+type: Opaque
+stringData:
+  bucket: "your-s3-bucket-name"
+  region: "us-east-1"
+  access-key: "your-aws-access-key"
+  secret-key: "your-aws-secret-key"

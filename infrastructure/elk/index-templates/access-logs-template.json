@@ -1,0 +1,123 @@
+{
+  "index_patterns": ["logs-nginx-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-ilm-policy",
+      "index.lifecycle.rollover_alias": "logs-nginx",
+      "refresh_interval": "30s",
+      "codec": "best_compression",
+      "max_result_window": 50000
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "client_ip": {
+          "type": "ip"
+        },
+        "user_name": {
+          "type": "keyword"
+        },
+        "access_time": {
+          "type": "date",
+          "format": "dd/MMM/yyyy:HH:mm:ss Z"
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "request_uri": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 512
+            }
+          }
+        },
+        "http_version": {
+          "type": "keyword"
+        },
+        "http_status": {
+          "type": "integer"
+        },
+        "body_bytes_sent": {
+          "type": "long"
+        },
+        "http_referer": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 512
+            }
+          }
+        },
+        "http_user_agent": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "request_time": {
+          "type": "float"
+        },
+        "upstream_connect_time": {
+          "type": "float"
+        },
+        "upstream_header_time": {
+          "type": "float"
+        },
+        "upstream_response_time": {
+          "type": "float"
+        },
+        "geoip": {
+          "properties": {
+            "location": {
+              "type": "geo_point"
+            },
+            "country_name": {
+              "type": "keyword"
+            },
+            "country_code2": {
+              "type": "keyword"
+            },
+            "city_name": {
+              "type": "keyword"
+            },
+            "region_name": {
+              "type": "keyword"
+            }
+          }
+        },
+        "user_agent": {
+          "properties": {
+            "name": {
+              "type": "keyword"
+            },
+            "os": {
+              "type": "keyword"
+            },
+            "os_name": {
+              "type": "keyword"
+            },
+            "device": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "priority": 100,
+  "version": 1,
+  "_meta": {
+    "description": "Template for Nginx access logs"
+  }
+}

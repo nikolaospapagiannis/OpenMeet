@@ -1,0 +1,19 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running Minimal Quality Checks (Dev Mode)..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Only check for critical security issues
+echo "🔐 Checking for hardcoded secrets..."
+if grep -r -E "(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][a-zA-Z0-9]{10,}['\"]" src/ --include="*.ts" --include="*.js" 2>/dev/null | grep -v -E "(REDACTED|placeholder|example|test|demo|\$\{)"; then
+  echo "⚠️  Warning: Possible hardcoded credentials found!"
+  echo "   Please review and use environment variables instead"
+  echo ""
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Dev mode checks complete - proceeding with commit"
+echo ""
+echo "💡 Run './scripts/switch-pre-commit.sh prod' for production checks"
+echo ""

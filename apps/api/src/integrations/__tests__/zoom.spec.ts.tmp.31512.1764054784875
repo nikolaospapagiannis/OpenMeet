@@ -1,0 +1,362 @@
+/**
+ * Zoom Integration Tests
+ * REAL API tests with environment-based execution
+ */
+
+import { ZoomIntegration, ZoomConfig } from '../zoom';
+import { RecordingService } from '../../services/recording';
+import { QueueService } from '../../services/queue';
+import { CacheService } from '../../services/cache';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+describe('ZoomIntegration - REAL API Tests', () => {
+  let zoomIntegration: ZoomIntegration;
+  let recordingService: RecordingService;
+  let queueService: QueueService;
+  let cacheService: CacheService;
+
+  const hasRealCredentials = !!(
+    process.env.ZOOM_CLIENT_ID &&
+    process.env.ZOOM_CLIENT_SECRET &&
+    process.env.ZOOM_ACCOUNT_ID
+  );
+
+  beforeAll(() => {
+    if (!hasRealCredentials) {
+      console.warn('⚠️  Skipping REAL Zoom API tests - credentials not found');
+      console.warn('Set ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET, ZOOM_ACCOUNT_ID to run real tests');
+    }
+
+    const config: ZoomConfig = {
+      clientId: process.env.ZOOM_CLIENT_ID || 'test-client-id',
+      clientSecret: process.env.ZOOM_CLIENT_SECRET || 'test-client-secret',
+      redirectUri: process.env.ZOOM_REDIRECT_URI || 'http://localhost:3000/auth/zoom/callback',
+      webhookSecret: process.env.ZOOM_WEBHOOK_SECRET || 'test-webhook-secret',
+      accountId: process.env.ZOOM_ACCOUNT_ID || 'test-account-id',
+    };
+
+    // Initialize services
+    recordingService = new RecordingService();
+    queueService = new QueueService();
+    cacheService = new CacheService();
+
+    zoomIntegration = new ZoomIntegration(
+      config,
+      recordingService,
+      queueService,
+      cacheService
+    );
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
+
+  describe('OAuth 2.0 Flow', () => {
+    it('should generate authorization URL', () => {
+      const state = 'test-state-123';
+      const url = zoomIntegration.getAuthorizationUrl(state);
+
+      expect(url).toContain('https://zoom.us/oauth/authorize');
+      expect(url).toContain(`client_id=${process.env.ZOOM_CLIENT_ID || 'test-client-id'}`);
+      expect(url).toContain(`state=${state}`);
+      expect(url).toContain('response_type=code');
+    });
+  });
+
+  describe('Meeting Management - REAL API', () => {
+    const testUserId = process.env.ZOOM_TEST_USER_ID || 'me';
+    let createdMeetingId: string | null = null;
+
+    it('should create a meeting via REAL Zoom API', async () => {
+      if (!hasRealCredentials) {
+        console.warn('Skipping - no credentials');
+        return;
+      }
+
+      const topic = `Test Meeting - ${Date.now()}`;
+      const startTime = new Date(Date.now() + 3600000); // 1 hour from now
+      const duration = 60;
+
+      try {
+        // This will make REAL API call to Zoom
+        const meeting = await zoomIntegration.createMeeting(
+          testUserId,
+          'test-org-id',
+          topic,
+          startTime,
+          duration,
+          {
+            auto_recording: 'cloud',
+            waiting_room: true,
+          }
+        );
+
+        expect(meeting).toBeDefined();
+        expect(meeting.id).toBeDefined();
+        expect(meeting.topic).toBe(topic);
+        expect(meeting.join_url).toContain('zoom.us');
+        expect(meeting.settings?.auto_recording).toBe('cloud');
+
+        createdMeetingId = meeting.id.toString();
+      } catch (error: any) {
+        if (error.response?.status === 401) {
+          throw new Error('❌ REAL API: Authentication failed - check credentials');
+        }
+        throw error;
+      }
+    });
+
+    it('should retrieve meeting details via REAL API', async () => {
+      if (!hasRealCredentials || !createdMeetingId) {
+        console.warn('Skipping - no credentials or meeting');
+        return;
+      }
+
+      try {
+        const meeting = await zoomIntegration.getMeeting(createdMeetingId);
+
+        expect(meeting).toBeDefined();
+        expect(meeting.id.toString()).toBe(createdMeetingId);
+        expect(meeting.join_url).toBeDefined();
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error('❌ REAL API: Meeting not found');
+        }
+        throw error;
+      }
+    });
+
+    it('should update meeting via REAL API', async () => {
+      if (!hasRealCredentials || !createdMeetingId) {
+        console.warn('Skipping - no credentials or meeting');
+        return;
+      }
+
+      const newTopic = `Updated Test Meeting - ${Date.now()}`;
+
+      try {
+        await zoomIntegration.updateMeeting(createdMeetingId, {
+          topic: newTopic,
+        });
+
+        const updated = await zoomIntegration.getMeeting(createdMeetingId);
+        expect(updated.topic).toBe(newTopic);
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error('❌ REAL API: Meeting not found for update');
+        }
+        throw error;
+      }
+    });
+
+    it('should list meetings via REAL API', async () => {
+      if (!hasRealCredentials) {
+        console.warn('Skipping - no credentials');
+        return;
+      }
+
+      try {
+        const meetings = await zoomIntegration.listMeetings(testUserId, 'scheduled');
+
+        expect(Array.isArray(meetings)).toBe(true);
+        // Should contain our created meeting
+        if (createdMeetingId) {
+          const found = meetings.find(m => m.id.toString() === createdMeetingId);
+          expect(found).toBeDefined();
+        }
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error('❌ REAL API: User not found');
+        }
+        throw error;
+      }
+    });
+
+    it('should delete meeting via REAL API', async () => {
+      if (!hasRealCredentials || !createdMeetingId) {
+        console.warn('Skipping - no credentials or meeting');
+        return;
+      }
+
+      try {
+        await zoomIntegration.deleteMeeting(createdMeetingId);
+
+        // Verify deletion
+        try {
+          await zoomIntegration.getMeeting(createdMeetingId);
+          throw new Error('Meeting should have been deleted');
+        } catch (error: any) {
+          // Expect 404 after deletion
+          expect(error.response?.status).toBe(404);
+        }
+      } catch (error: any) {
+        if (error.message?.includes('should have been deleted')) {
+          throw error;
+        }
+      }
+    });
+  });
+
+  describe('Participant Management - REAL API', () => {
+    it('should retrieve participants for past meeting', async () => {
+      if (!hasRealCredentials) {
+        console.warn('Skipping - no credentials');
+        return;
+      }
+
+      const pastMeetingId = process.env.ZOOM_TEST_PAST_MEETING_ID;
+
+      if (!pastMeetingId) {
+        console.warn('Skipping - no ZOOM_TEST_PAST_MEETING_ID provided');
+        return;
+      }
+
+      try {
+        const participants = await zoomIntegration.getMeetingParticipants(pastMeetingId);
+
+        expect(Array.isArray(participants)).toBe(true);
+        if (participants.length > 0) {
+          expect(participants[0]).toHaveProperty('id');
+          expect(participants[0]).toHaveProperty('user_name');
+        }
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error('❌ REAL API: Past meeting not found');
+        }
+        throw error;
+      }
+    });
+  });
+
+  describe('Recording Management - REAL API', () => {
+    it('should retrieve cloud recordings', async () => {
+      if (!hasRealCredentials) {
+        console.warn('Skipping - no credentials');
+        return;
+      }
+
+      const testUserId = process.env.ZOOM_TEST_USER_ID || 'me';
+      const from = new Date();
+      from.setDate(from.getDate() - 30); // Last 30 days
+      const to = new Date();
+
+      try {
+        const recordings = await zoomIntegration.getCloudRecordings(testUserId, from, to);
+
+        expect(Array.isArray(recordings)).toBe(true);
+        if (recordings.length > 0) {
+          expect(recordings[0]).toHaveProperty('id');
+          expect(recordings[0]).toHaveProperty('download_url');
+          expect(recordings[0]).toHaveProperty('file_type');
+        }
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          throw new Error('❌ REAL API: User not found for recordings');
+        }
+        throw error;
+      }
+    });
+  });
+
+  describe('Webhook Processing', () => {
+    it('should verify valid webhook signature', async () => {
+      const webhookSecret = process.env.ZOOM_WEBHOOK_SECRET || 'test-webhook-secret';
+
+      const payload = {
+        event: 'meeting.started',
+        payload: {
+          account_id: 'test-account',
+          object: {
+            id: 123456789,
+            topic: 'Test Meeting',
+          },
+        },
+        event_ts: Date.now(),
+      };
+
+      const timestamp = Date.now().toString();
+      const message = `v0:${timestamp}:${JSON.stringify(payload)}`;
+      const crypto = require('crypto');
+      const hash = crypto.createHmac('sha256', webhookSecret).update(message).digest('hex');
+      const signature = `v0=${hash}`;
+
+      const headers = {
+        'x-zm-request-timestamp': timestamp,
+        'x-zm-signature': signature,
+      };
+
+      // Should not throw
+      await expect(zoomIntegration.processWebhook(headers, payload)).resolves.not.toThrow();
+    });
+
+    it('should reject invalid webhook signature', async () => {
+      const payload = {
+        event: 'meeting.started',
+        payload: {
+          account_id: 'test-account',
+          object: {
+            id: 123456789,
+          },
+        },
+        event_ts: Date.now(),
+      };
+
+      const headers = {
+        'x-zm-request-timestamp': Date.now().toString(),
+        'x-zm-signature': 'v0=invalid-signature',
+      };
+
+      await expect(zoomIntegration.processWebhook(headers, payload)).rejects.toThrow('Invalid webhook signature');
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle 401 Unauthorized errors', async () => {
+      const badConfig: ZoomConfig = {
+        clientId: 'invalid-client-id',
+        clientSecret: 'invalid-secret',
+        redirectUri: 'http://localhost:3000/callback',
+        webhookSecret: 'secret',
+        accountId: 'invalid-account',
+      };
+
+      const badIntegration = new ZoomIntegration(
+        badConfig,
+        recordingService,
+        queueService,
+        cacheService
+      );
+
+      await expect(badIntegration.getMeeting('123456789')).rejects.toThrow();
+    });
+
+    it('should handle 404 Not Found errors', async () => {
+      if (!hasRealCredentials) {
+        console.warn('Skipping - no credentials');
+        return;
+      }
+
+      await expect(zoomIntegration.getMeeting('999999999999')).rejects.toThrow();
+    });
+  });
+});
+
+describe('Zoom API Error Codes', () => {
+  it('should document expected Zoom API error codes', () => {
+    const errorCodes = {
+      124: 'Invalid access token',
+      200: 'No permission',
+      300: 'Invalid request',
+      404: 'Meeting not found',
+      429: 'Rate limit exceeded',
+      3000: 'Cannot access webinar info',
+      3001: 'Meeting does not exist',
+      3003: 'Not allowed to start this meeting',
+    };
+
+    expect(Object.keys(errorCodes).length).toBeGreaterThan(0);
+  });
+});

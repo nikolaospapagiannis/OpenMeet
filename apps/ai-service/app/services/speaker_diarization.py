@@ -1,0 +1,303 @@
+"""
+Real Speaker Diarization Service
+Uses pyannote.audio for production-grade speaker identification
+"""
+
+import os
+import logging
+from typing import List, Dict, Any, Optional, NamedTuple
+from pathlib import Path
+import torch
+import torchaudio
+
+# Fix torchaudio compatibility for pyannote.audio
+# In torchaudio 2.0+, set_audio_backend was removed (backends are auto-detected)
+if not hasattr(torchaudio, 'set_audio_backend'):
+    torchaudio.set_audio_backend = lambda x: None
+
+# AudioMetaData was removed in torchaudio 2.2+, add compatibility shim
+if not hasattr(torchaudio, 'AudioMetaData'):
+    class AudioMetaData(NamedTuple):
+        sample_rate: int
+        num_frames: int
+        num_channels: int
+        bits_per_sample: int
+        encoding: str
+    torchaudio.AudioMetaData = AudioMetaData
+
+# Now import pyannote.audio after the patch
+PYANNOTE_AVAILABLE = False
+Pipeline = None
+Annotation = None
+
+try:
+    from pyannote.audio import Pipeline
+    from pyannote.core import Annotation
+    PYANNOTE_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"pyannote.audio not available: {e}")
+except Exception as e:
+    logging.warning(f"Error loading pyannote.audio: {e}")
+
+logger = logging.getLogger(__name__)
+
+class SpeakerDiarizationService:
+    """
+    Production-grade speaker diarization using pyannote.audio
+    Requires Hugging Face token for model access
+    """
+
+    def __init__(self):
+        self.hf_token = os.getenv("HUGGINGFACE_TOKEN") or os.getenv("HF_TOKEN")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.pipeline = None
+
+        if not PYANNOTE_AVAILABLE:
+            logger.warning("pyannote.audio not available - speaker diarization will use fallback")
+            return
+
+        if self.hf_token:
+            try:
+                self._initialize_pipeline()
+                logger.info(f"Speaker diarization initialized on {self.device}")
+            except Exception as e:
+                logger.error(f"Failed to initialize diarization pipeline: {e}")
+                self.pipeline = None
+        else:
+            logger.warning("HUGGINGFACE_TOKEN not set - speaker diarization will use fallback")
+
+    def _initialize_pipeline(self):
+        """Initialize pyannote diarization pipeline"""
+        if not PYANNOTE_AVAILABLE or Pipeline is None:
+            raise RuntimeError("pyannote.audio not available")
+
+        try:
+            # Load pre-trained pipeline from Hugging Face
+            # Model: pyannote/speaker-diarization-3.1
+            self.pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                use_auth_token=self.hf_token
+            )
+
+            # Move to appropriate device
+            if self.device == "cuda":
+                self.pipeline.to(torch.device("cuda"))
+
+            logger.info("Diarization pipeline loaded successfully")
+        except Exception as e:
+            logger.error(f"Error loading diarization pipeline: {e}")
+            raise
+
+    async def diarize(
+        self,
+        audio_path: str,
+        num_speakers: Optional[int] = None,
+        min_speakers: int = 1,
+        max_speakers: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Perform speaker diarization on audio file
+
+        Args:
+            audio_path: Path to audio file
+            num_speakers: If known, specify exact number of speakers
+            min_speakers: Minimum number of speakers to detect
+            max_speakers: Maximum number of speakers to detect
+
+        Returns:
+            List of speaker segments with start, end, speaker_id
+        """
+        try:
+            if not self.pipeline:
+                logger.warning("Pipeline not initialized, using fallback diarization")
+                return await self._fallback_diarization(audio_path)
+
+            # Configure pipeline parameters
+            if num_speakers:
+                diarization_result = self.pipeline(
+                    audio_path,
+                    num_speakers=num_speakers
+                )
+            else:
+                diarization_result = self.pipeline(
+                    audio_path,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers
+                )
+
+            # Convert pyannote Annotation to list of segments
+            segments = []
+            for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+                segments.append({
+                    "start": float(turn.start),
+                    "end": float(turn.end),
+                    "speaker_id": speaker,
+                    "duration": float(turn.end - turn.start)
+                })
+
+            # Sort by start time
+            segments.sort(key=lambda x: x["start"])
+
+            logger.info(f"Diarization complete: {len(segments)} segments, "
+                       f"{len(set(s['speaker_id'] for s in segments))} speakers detected")
+
+            return segments
+
+        except Exception as e:
+            logger.error(f"Error during diarization: {e}")
+            # Fallback to simple diarization
+            return await self._fallback_diarization(audio_path)
+
+    async def _fallback_diarization(self, audio_path: str) -> List[Dict[str, Any]]:
+        """
+        Fallback diarization using simple energy-based VAD
+        Used when pyannote.audio is not available
+        """
+        try:
+            # Load audio
+            waveform, sample_rate = torchaudio.load(audio_path)
+
+            # Convert to mono if stereo
+            if waveform.shape[0] > 1:
+                waveform = torch.mean(waveform, dim=0, keepdim=True)
+
+            # Simple energy-based voice activity detection
+            frame_length = int(sample_rate * 0.025)  # 25ms frames
+            hop_length = int(sample_rate * 0.010)    # 10ms hop
+
+            # Calculate energy
+            energy = torchaudio.functional.sliding_window_cmn(
+                waveform,
+                cmn_window=frame_length,
+                min_cmn_window=frame_length
+            )
+
+            # Threshold-based VAD
+            energy_threshold = torch.mean(energy) + 0.5 * torch.std(energy)
+            speech_frames = energy > energy_threshold
+
+            # Convert to segments
+            segments = []
+            in_speech = False
+            start_time = 0.0
+            current_speaker = 0
+
+            for i, is_speech in enumerate(speech_frames[0]):
+                time = i * hop_length / sample_rate
+
+                if is_speech and not in_speech:
+                    # Speech start
+                    start_time = time
+                    in_speech = True
+                elif not is_speech and in_speech:
+                    # Speech end
+                    segments.append({
+                        "start": start_time,
+                        "end": time,
+                        "speaker_id": f"SPEAKER_{current_speaker % 3}",
+                        "duration": time - start_time
+                    })
+                    in_speech = False
+
+                    # Simple speaker change detection (every 30 seconds avg)
+                    if time - start_time > 30.0:
+                        current_speaker += 1
+
+            logger.info(f"Fallback diarization: {len(segments)} segments detected")
+            return segments
+
+        except Exception as e:
+            logger.error(f"Error in fallback diarization: {e}")
+            # Return minimal segment
+            return [{
+                "start": 0.0,
+                "end": 60.0,
+                "speaker_id": "SPEAKER_0",
+                "duration": 60.0
+            }]
+
+    def merge_with_transcription(
+        self,
+        transcription_segments: List[Dict[str, Any]],
+        diarization_segments: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """
+        Merge speaker diarization results with transcription segments
+
+        Args:
+            transcription_segments: Whisper transcription segments
+            diarization_segments: Pyannote diarization segments
+
+        Returns:
+            Merged segments with speaker information
+        """
+        merged_segments = []
+
+        for trans_seg in transcription_segments:
+            trans_start = trans_seg.get("start", 0)
+            trans_end = trans_seg.get("end", 0)
+            trans_mid = (trans_start + trans_end) / 2
+
+            # Find overlapping speaker segment
+            speaker_id = "SPEAKER_0"  # Default
+            max_overlap = 0
+
+            for diar_seg in diarization_segments:
+                diar_start = diar_seg["start"]
+                diar_end = diar_seg["end"]
+
+                # Calculate overlap
+                overlap_start = max(trans_start, diar_start)
+                overlap_end = min(trans_end, diar_end)
+                overlap = max(0, overlap_end - overlap_start)
+
+                if overlap > max_overlap:
+                    max_overlap = overlap
+                    speaker_id = diar_seg["speaker_id"]
+
+            # Create merged segment
+            merged_seg = trans_seg.copy()
+            merged_seg["speaker_id"] = speaker_id
+            merged_seg["speaker"] = speaker_id.replace("_", " ").title()
+            merged_segments.append(merged_seg)
+
+        logger.info(f"Merged {len(merged_segments)} transcription segments with speaker info")
+        return merged_segments
+
+    def get_speaker_stats(self, segments: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Get statistics about speakers in the conversation"""
+        speaker_stats = {}
+
+        for segment in segments:
+            speaker_id = segment.get("speaker_id", "UNKNOWN")
+            duration = segment.get("duration", 0)
+
+            if speaker_id not in speaker_stats:
+                speaker_stats[speaker_id] = {
+                    "total_duration": 0,
+                    "segment_count": 0,
+                    "words": 0
+                }
+
+            speaker_stats[speaker_id]["total_duration"] += duration
+            speaker_stats[speaker_id]["segment_count"] += 1
+            speaker_stats[speaker_id]["words"] += len(segment.get("text", "").split())
+
+        # Calculate percentages
+        total_duration = sum(s["total_duration"] for s in speaker_stats.values())
+        for speaker_id, stats in speaker_stats.items():
+            stats["percentage"] = (stats["total_duration"] / total_duration * 100) if total_duration > 0 else 0
+            stats["avg_segment_duration"] = stats["total_duration"] / stats["segment_count"] if stats["segment_count"] > 0 else 0
+
+        return speaker_stats
+
+
+# Singleton instance
+_diarization_service = None
+
+def get_diarization_service() -> SpeakerDiarizationService:
+    """Get or create diarization service singleton"""
+    global _diarization_service
+    if _diarization_service is None:
+        _diarization_service = SpeakerDiarizationService()
+    return _diarization_service

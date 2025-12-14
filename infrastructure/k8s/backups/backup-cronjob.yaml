@@ -1,0 +1,343 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: openmeet-production
+data:
+  automated-backup.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    echo "Starting automated backup..."
+
+    # Run PostgreSQL backup
+    /scripts/backup-postgres.sh
+
+    # Run MongoDB backup
+    /scripts/backup-mongodb.sh
+
+    # Run Redis backup
+    /scripts/backup-redis.sh
+
+    echo "All backups completed successfully"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: openmeet-production
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400  # 24 hours
+      template:
+        metadata:
+          labels:
+            app: postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+          containers:
+            - name: backup
+              image: postgres:15-alpine
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="/backups/postgres_${TIMESTAMP}.sql.gz"
+
+                  echo "Starting PostgreSQL backup..."
+
+                  pg_dump \
+                    -h postgres-master \
+                    -U postgres \
+                    -d openmeet \
+                    --format=custom \
+                    --compress=9 \
+                    --file="$BACKUP_FILE"
+
+                  echo "Backup completed: $BACKUP_FILE"
+
+                  # Upload to S3
+                  if command -v aws &> /dev/null; then
+                    aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/postgres/dump/postgres_${TIMESTAMP}.sql.gz" \
+                      --region "${S3_REGION}" \
+                      --storage-class STANDARD_IA \
+                      --server-side-encryption AES256
+                    echo "Uploaded to S3"
+                  fi
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: openmeet-secrets
+                      key: postgres-password
+                - name: S3_BUCKET
+                  value: "openmeet-backups"
+                - name: S3_REGION
+                  value: "us-east-1"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1000m"
+          volumes:
+            - name: backup-storage
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: openmeet-production
+spec:
+  schedule: "30 */6 * * *"  # Every 6 hours at :30
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: mongodb-backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+          containers:
+            - name: backup
+              image: mongo:7
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_DIR="/backups/mongodb_${TIMESTAMP}"
+
+                  echo "Starting MongoDB backup..."
+
+                  mongodump \
+                    --host mongodb \
+                    --db openmeet \
+                    --username admin \
+                    --password "$MONGODB_PASSWORD" \
+                    --out "$BACKUP_DIR" \
+                    --oplog \
+                    --gzip
+
+                  tar -czf "${BACKUP_DIR}.tar.gz" -C /backups "mongodb_${TIMESTAMP}"
+
+                  echo "Backup completed: ${BACKUP_DIR}.tar.gz"
+
+                  # Upload to S3
+                  if command -v aws &> /dev/null; then
+                    aws s3 cp "${BACKUP_DIR}.tar.gz" "s3://${S3_BUCKET}/mongodb/mongodb_${TIMESTAMP}.tar.gz" \
+                      --region "${S3_REGION}" \
+                      --storage-class STANDARD_IA \
+                      --server-side-encryption AES256
+                    echo "Uploaded to S3"
+                  fi
+
+                  rm -rf "$BACKUP_DIR"
+              env:
+                - name: MONGODB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: openmeet-secrets
+                      key: mongodb-password
+                - name: S3_BUCKET
+                  value: "openmeet-backups"
+                - name: S3_REGION
+                  value: "us-east-1"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+              resources:
+                requests:
+                  memory: "512Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "2Gi"
+                  cpu: "1000m"
+          volumes:
+            - name: backup-storage
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redis-backup
+  namespace: openmeet-production
+spec:
+  schedule: "45 */6 * * *"  # Every 6 hours at :45
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: redis-backup
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+          containers:
+            - name: backup
+              image: redis:7-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+
+                  TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_FILE="/backups/redis_${TIMESTAMP}.rdb"
+
+                  echo "Starting Redis backup..."
+
+                  # Trigger BGSAVE
+                  redis-cli -h redis-master -a "$REDIS_PASSWORD" BGSAVE
+
+                  # Wait for BGSAVE to complete
+                  sleep 10
+
+                  # Download RDB
+                  redis-cli -h redis-master -a "$REDIS_PASSWORD" --rdb "$BACKUP_FILE"
+
+                  gzip "$BACKUP_FILE"
+
+                  echo "Backup completed: ${BACKUP_FILE}.gz"
+
+                  # Upload to S3
+                  if command -v aws &> /dev/null; then
+                    aws s3 cp "${BACKUP_FILE}.gz" "s3://${S3_BUCKET}/redis/redis_${TIMESTAMP}.rdb.gz" \
+                      --region "${S3_REGION}" \
+                      --storage-class STANDARD_IA \
+                      --server-side-encryption AES256
+                    echo "Uploaded to S3"
+                  fi
+              env:
+                - name: REDIS_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: openmeet-secrets
+                      key: redis-password
+                - name: S3_BUCKET
+                  value: "openmeet-backups"
+                - name: S3_REGION
+                  value: "us-east-1"
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "250m"
+          volumes:
+            - name: backup-storage
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rto-rpo-test
+  namespace: openmeet-production
+spec:
+  schedule: "0 2 * * 0"  # Weekly on Sunday at 2 AM
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 604800  # 7 days
+      template:
+        metadata:
+          labels:
+            app: rto-rpo-test
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: backup-service-account
+          containers:
+            - name: test
+              image: amazon/aws-cli:latest
+              command:
+                - /bin/bash
+                - /scripts/rto-rpo-test.sh
+              env:
+                - name: S3_BUCKET
+                  value: "openmeet-backups"
+                - name: S3_REGION
+                  value: "us-east-1"
+                - name: RTO_TARGET
+                  value: "300"
+                - name: RPO_TARGET
+                  value: "60"
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+              resources:
+                requests:
+                  memory: "256Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "512Mi"
+                  cpu: "250m"
+          volumes:
+            - name: scripts
+              configMap:
+                name: backup-scripts
+                defaultMode: 0755
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backup-service-account
+  namespace: openmeet-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: backup-role
+  namespace: openmeet-production
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: backup-rolebinding
+  namespace: openmeet-production
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: backup-role
+subjects:
+  - kind: ServiceAccount
+    name: backup-service-account
+    namespace: openmeet-production

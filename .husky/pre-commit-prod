@@ -1,0 +1,74 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🚀 Running Production Quality Checks..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check for forbidden patterns
+echo "🔍 Checking for forbidden patterns..."
+FORBIDDEN_PATTERNS=(
+  "console\\.log"
+  "console\\.warn"
+  "console\\.error"
+  "console\\.debug"
+  "@ts-ignore"
+  "@ts-nocheck"
+  "// TODO"
+  "// FIXME"
+  "// HACK"
+  "// PLACEHOLDER"
+  "in production"
+  "would be"
+  "\\.only\\("
+  "\\.skip\\("
+)
+
+ERROR_FOUND=0
+
+for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+  if grep -r -E "$pattern" src/ apps/web/src/ packages/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v -E "(test\.|spec\.|stories\.|mock)"; then
+    echo "❌ Forbidden pattern found: $pattern"
+    ERROR_FOUND=1
+  fi
+done
+
+# Check for hardcoded secrets
+echo "🔐 Checking for hardcoded secrets..."
+if grep -r -E "(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][a-zA-Z0-9]{10,}['\"]" src/ apps/web/src/ packages/ --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null | grep -v -E "(REDACTED|placeholder|example|test|demo|\$\{|process\.env)"; then
+  echo "❌ Possible hardcoded credentials found!"
+  ERROR_FOUND=1
+fi
+
+# Run linting
+echo "🎨 Running ESLint..."
+if npm run lint 2>&1 | grep -E "(error|Error)"; then
+  echo "❌ Linting errors found!"
+  ERROR_FOUND=1
+fi
+
+# Run type checking
+echo "📝 Running TypeScript type check..."
+if ! npm run typecheck; then
+  echo "❌ TypeScript errors found!"
+  ERROR_FOUND=1
+fi
+
+# Run tests
+echo "🧪 Running tests..."
+if ! npm run test; then
+  echo "❌ Tests failed!"
+  ERROR_FOUND=1
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [ $ERROR_FOUND -eq 1 ]; then
+  echo "❌ Production quality checks failed!"
+  echo ""
+  echo "💡 Fix the issues above before committing."
+  echo "   To bypass (NOT recommended): git commit --no-verify"
+  exit 1
+else
+  echo "✅ All production quality checks passed!"
+  exit 0
+fi

@@ -1,0 +1,72 @@
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay
+  namespace: chaos-mesh
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'api'
+  delay:
+    latency: '100ms'
+    correlation: '25'
+    jitter: '10ms'
+  duration: '5m'
+  scheduler:
+    cron: '@every 2h'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-partition
+  namespace: chaos-mesh
+spec:
+  action: partition
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'postgres'
+  direction: both
+  duration: '30s'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-loss
+  namespace: chaos-mesh
+spec:
+  action: loss
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+  loss:
+    loss: '25'
+    correlation: '25'
+  duration: '2m'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: bandwidth-limit
+  namespace: chaos-mesh
+spec:
+  action: bandwidth
+  mode: all
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'api'
+  bandwidth:
+    rate: '1mbps'
+    limit: 20000
+    buffer: 10000
+  duration: '3m'

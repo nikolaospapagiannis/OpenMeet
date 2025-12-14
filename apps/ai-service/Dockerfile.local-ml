@@ -1,0 +1,70 @@
+# Dockerfile for AI Service with Local ML Models
+# Using CUDA 12.4 with cuDNN 9 for faster-whisper/ctranslate2 compatibility
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set working directory
+WORKDIR /app
+
+# Install Python and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3.10-venv \
+    ffmpeg \
+    git \
+    wget \
+    curl \
+    libsndfile1 \
+    libsox-fmt-all \
+    sox \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
+
+# Copy requirements
+COPY requirements.txt requirements-ml.txt ./
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements-ml.txt || true
+
+# Install PyTorch with CUDA 12.4 support
+RUN pip3 install --no-cache-dir \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Install ctranslate2 with CUDA 12 support first (for cuDNN 9 compatibility)
+RUN pip3 install --no-cache-dir ctranslate2
+
+# Install faster-whisper (uses ctranslate2)
+RUN pip3 install --no-cache-dir faster-whisper
+
+# Install ML/AI libraries
+RUN pip3 install --no-cache-dir \
+    transformers[torch] \
+    accelerate \
+    sentence-transformers \
+    optimum
+
+# Install pyannote.audio for speaker diarization
+RUN pip3 install --no-cache-dir pyannote.audio
+
+# Copy application code
+COPY . .
+
+# Create cache directories
+RUN mkdir -p /root/.cache/huggingface /root/.openmeet
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

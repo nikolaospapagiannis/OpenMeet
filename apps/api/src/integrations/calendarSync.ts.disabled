@@ -1,0 +1,750 @@
+/**
+ * Calendar Sync Service
+ * Unified calendar synchronization for Google Calendar and Outlook
+ */
+
+import { EventEmitter } from 'events';
+import winston from 'winston';
+import { PrismaClient } from '@prisma/client';
+import { google, calendar_v3 } from 'googleapis';
+import { Client } from '@microsoft/microsoft-graph-client';
+import { CronJob } from 'cron';
+import { RecordingService } from '../services/recording';
+import { QueueService, JobType } from '../services/queue';
+import { CacheService } from '../services/cache';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  defaultMeta: { service: 'calendar-sync' },
+  transports: [new winston.transports.Console()],
+});
+
+const prisma = new PrismaClient();
+
+export enum CalendarProvider {
+  GOOGLE = 'google',
+  OUTLOOK = 'outlook',
+  APPLE = 'apple',
+}
+
+export interface CalendarEvent {
+  id: string;
+  provider: CalendarProvider;
+  title: string;
+  description?: string;
+  startTime: Date;
+  endTime: Date;
+  location?: string;
+  meetingUrl?: string;
+  attendees: Array<{
+    email: string;
+    name?: string;
+    status: string;
+    isOrganizer?: boolean;
+  }>;
+  isRecurring: boolean;
+  recurrenceRule?: string;
+  isOnlineMeeting: boolean;
+  conferenceData?: {
+    type: string;
+    url?: string;
+    id?: string;
+  };
+  reminders?: Array<{
+    method: string;
+    minutes: number;
+  }>;
+  originalEvent?: any;
+}
+
+export interface SyncOptions {
+  userId: string;
+  organizationId: string;
+  providers: CalendarProvider[];
+  syncDirection: 'one-way' | 'two-way';
+  autoRecord?: boolean;
+  syncPastDays?: number;
+  syncFutureDays?: number;
+  filterKeywords?: string[];
+  excludePrivate?: boolean;
+}
+
+export interface SyncResult {
+  provider: CalendarProvider;
+  eventsFound: number;
+  eventsCreated: number;
+  eventsUpdated: number;
+  eventsDeleted: number;
+  errors: Array<{
+    eventId: string;
+    error: string;
+  }>;
+}
+
+export class CalendarSyncService extends EventEmitter {
+  private googleClients: Map<string, any>;
+  private outlookClients: Map<string, Client>;
+  private syncJobs: Map<string, CronJob>;
+  private recordingService: RecordingService;
+  private queueService: QueueService;
+  private cacheService: CacheService;
+
+  constructor(
+    recordingService: RecordingService,
+    queueService: QueueService,
+    cacheService: CacheService
+  ) {
+    super();
+    this.googleClients = new Map();
+    this.outlookClients = new Map();
+    this.syncJobs = new Map();
+    this.recordingService = recordingService;
+    this.queueService = queueService;
+    this.cacheService = cacheService;
+  }
+
+  /**
+   * Initialize calendar sync for a user
+   */
+  async initializeSync(options: SyncOptions): Promise<void> {
+    const syncId = `sync_${options.userId}_${options.organizationId}`;
+
+    // Map CalendarProvider to IntegrationType
+    const integrationTypes = options.providers.map(provider => {
+      switch (provider) {
+        case CalendarProvider.GOOGLE:
+          return 'google' as const;
+        case CalendarProvider.OUTLOOK:
+          return 'outlook' as const;
+        default:
+          return provider as any;
+      }
+    });
+
+    // Load credentials from database
+    const integrations = await prisma.integration.findMany({
+      where: {
+        userId: options.userId,
+        organizationId: options.organizationId,
+        type: { in: integrationTypes },
+        isActive: true,
+      },
+    });
+
+    // Initialize clients for each provider
+    for (const integration of integrations) {
+      if (integration.type === 'google' || integration.type === 'google_meet') {
+        await this.initializeGoogleClient(
+          options.userId,
+          integration.accessToken!,
+          integration.refreshToken!
+        );
+      } else if (integration.type === 'outlook' || integration.type === 'teams') {
+        await this.initializeOutlookClient(
+          options.userId,
+          integration.accessToken!
+        );
+      }
+    }
+
+    // Save sync configuration to metadata
+    const configMetadata = {
+      providers: options.providers,
+      syncDirection: options.syncDirection,
+      autoRecord: options.autoRecord || false,
+      syncPastDays: options.syncPastDays || 7,
+      syncFutureDays: options.syncFutureDays || 30,
+      filterKeywords: options.filterKeywords || [],
+      excludePrivate: options.excludePrivate || false,
+      isActive: true,
+    };
+
+    // Note: CalendarSync model expects meetingId, but we're creating a sync config
+    // This may need to be stored in a different table or in Integration metadata
+    // For now, store in metadata field
+
+    // Setup periodic sync job
+    this.setupSyncJob(syncId, options);
+
+    // Perform initial sync
+    await this.performSync(options);
+
+    logger.info(`Calendar sync initialized for user ${options.userId}`);
+  }
+
+  /**
+   * Initialize Google Calendar client
+   */
+  private async initializeGoogleClient(
+    userId: string,
+    accessToken: string,
+    refreshToken: string
+  ): Promise<void> {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+
+    this.googleClients.set(userId, oauth2Client);
+  }
+
+  /**
+   * Initialize Outlook client
+   */
+  private async initializeOutlookClient(
+    userId: string,
+    accessToken: string
+  ): Promise<void> {
+    const client = Client.init({
+      authProvider: (done) => {
+        done(null, accessToken);
+      },
+    });
+
+    this.outlookClients.set(userId, client);
+  }
+
+  /**
+   * Setup periodic sync job
+   */
+  private setupSyncJob(syncId: string, options: SyncOptions): void {
+    // Run sync every 15 minutes
+    const job = new CronJob('*/15 * * * *', async () => {
+      try {
+        await this.performSync(options);
+      } catch (error) {
+        logger.error(`Sync job failed for ${syncId}:`, error);
+      }
+    });
+
+    job.start();
+    this.syncJobs.set(syncId, job);
+  }
+
+  /**
+   * Perform calendar sync
+   */
+  async performSync(options: SyncOptions): Promise<SyncResult[]> {
+    const results: SyncResult[] = [];
+
+    for (const provider of options.providers) {
+      try {
+        const result = await this.syncProvider(provider, options);
+        results.push(result);
+      } catch (error) {
+        logger.error(`Failed to sync ${provider}:`, error);
+        results.push({
+          provider,
+          eventsFound: 0,
+          eventsCreated: 0,
+          eventsUpdated: 0,
+          eventsDeleted: 0,
+          errors: [{
+            eventId: 'sync',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          }],
+        });
+      }
+    }
+
+    // Update last sync time
+    await prisma.calendarSync.update({
+      where: { userId: options.userId },
+      data: { lastSyncedAt: new Date() },
+    });
+
+    this.emit('sync:completed', {
+      userId: options.userId,
+      results,
+    });
+
+    return results;
+  }
+
+  /**
+   * Sync specific provider
+   */
+  private async syncProvider(
+    provider: CalendarProvider,
+    options: SyncOptions
+  ): Promise<SyncResult> {
+    let events: CalendarEvent[] = [];
+
+    // Fetch events from provider
+    switch (provider) {
+      case CalendarProvider.GOOGLE:
+        events = await this.fetchGoogleEvents(options);
+        break;
+      case CalendarProvider.OUTLOOK:
+        events = await this.fetchOutlookEvents(options);
+        break;
+      default:
+        throw new Error(`Unsupported provider: ${provider}`);
+    }
+
+    // Filter events based on options
+    events = this.filterEvents(events, options);
+
+    // Sync events to database
+    const result = await this.syncEventsToDatabase(events, options);
+
+    // Schedule auto-recording if enabled
+    if (options.autoRecord) {
+      await this.scheduleAutoRecording(events, options);
+    }
+
+    return {
+      provider,
+      eventsFound: events.length,
+      ...result,
+      errors: [],
+    };
+  }
+
+  /**
+   * Fetch Google Calendar events
+   */
+  private async fetchGoogleEvents(options: SyncOptions): Promise<CalendarEvent[]> {
+    const oauth2Client = this.googleClients.get(options.userId);
+    
+    if (!oauth2Client) {
+      throw new Error('Google client not initialized');
+    }
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    
+    const now = new Date();
+    const timeMin = new Date(now.getTime() - (options.syncPastDays || 7) * 24 * 60 * 60 * 1000);
+    const timeMax = new Date(now.getTime() + (options.syncFutureDays || 30) * 24 * 60 * 60 * 1000);
+
+    const response = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 250,
+    });
+
+    const events: CalendarEvent[] = [];
+    
+    for (const item of response.data.items || []) {
+      events.push(this.convertGoogleEvent(item));
+    }
+
+    return events;
+  }
+
+  /**
+   * Fetch Outlook events
+   */
+  private async fetchOutlookEvents(options: SyncOptions): Promise<CalendarEvent[]> {
+    const client = this.outlookClients.get(options.userId);
+    
+    if (!client) {
+      throw new Error('Outlook client not initialized');
+    }
+
+    const now = new Date();
+    const startDateTime = new Date(now.getTime() - (options.syncPastDays || 7) * 24 * 60 * 60 * 1000);
+    const endDateTime = new Date(now.getTime() + (options.syncFutureDays || 30) * 24 * 60 * 60 * 1000);
+
+    const response = await client
+      .api('/me/calendarview')
+      .query({
+        startDateTime: startDateTime.toISOString(),
+        endDateTime: endDateTime.toISOString(),
+        $top: 250,
+        $orderby: 'start/dateTime',
+      })
+      .get();
+
+    const events: CalendarEvent[] = [];
+    
+    for (const item of response.value || []) {
+      events.push(this.convertOutlookEvent(item));
+    }
+
+    return events;
+  }
+
+  /**
+   * Convert Google event to unified format
+   */
+  private convertGoogleEvent(event: any): CalendarEvent {
+    return {
+      id: event.id,
+      provider: CalendarProvider.GOOGLE,
+      title: event.summary || 'Untitled',
+      description: event.description,
+      startTime: new Date(event.start?.dateTime || event.start?.date),
+      endTime: new Date(event.end?.dateTime || event.end?.date),
+      location: event.location,
+      meetingUrl: event.hangoutLink || event.conferenceData?.entryPoints?.[0]?.uri,
+      attendees: (event.attendees || []).map((a: any) => ({
+        email: a.email,
+        name: a.displayName,
+        status: a.responseStatus,
+        isOrganizer: a.organizer,
+      })),
+      isRecurring: !!event.recurringEventId,
+      recurrenceRule: event.recurrence?.[0],
+      isOnlineMeeting: !!event.hangoutLink || !!event.conferenceData,
+      conferenceData: event.conferenceData ? {
+        type: event.conferenceData.conferenceSolution?.name || 'Google Meet',
+        url: event.hangoutLink || event.conferenceData.entryPoints?.[0]?.uri,
+        id: event.conferenceData.conferenceId,
+      } : undefined,
+      reminders: event.reminders?.overrides?.map((r: any) => ({
+        method: r.method,
+        minutes: r.minutes,
+      })),
+      originalEvent: event,
+    };
+  }
+
+  /**
+   * Convert Outlook event to unified format
+   */
+  private convertOutlookEvent(event: any): CalendarEvent {
+    return {
+      id: event.id,
+      provider: CalendarProvider.OUTLOOK,
+      title: event.subject || 'Untitled',
+      description: event.bodyPreview,
+      startTime: new Date(event.start.dateTime),
+      endTime: new Date(event.end.dateTime),
+      location: event.location?.displayName,
+      meetingUrl: event.onlineMeetingUrl || event.onlineMeeting?.joinUrl,
+      attendees: (event.attendees || []).map((a: any) => ({
+        email: a.emailAddress.address,
+        name: a.emailAddress.name,
+        status: a.status?.response || 'none',
+        isOrganizer: event.organizer?.emailAddress?.address === a.emailAddress.address,
+      })),
+      isRecurring: !!event.seriesMasterId,
+      recurrenceRule: event.recurrence?.pattern?.type,
+      isOnlineMeeting: event.isOnlineMeeting,
+      conferenceData: event.onlineMeeting ? {
+        type: event.onlineMeetingProvider || 'Teams',
+        url: event.onlineMeetingUrl || event.onlineMeeting.joinUrl,
+        id: event.onlineMeeting.conferenceId,
+      } : undefined,
+      reminders: event.reminderMinutesBeforeStart ? [{
+        method: 'popup',
+        minutes: event.reminderMinutesBeforeStart,
+      }] : undefined,
+      originalEvent: event,
+    };
+  }
+
+  /**
+   * Filter events based on sync options
+   */
+  private filterEvents(
+    events: CalendarEvent[],
+    options: SyncOptions
+  ): CalendarEvent[] {
+    return events.filter(event => {
+      // Filter by keywords if specified
+      if (options.filterKeywords && options.filterKeywords.length > 0) {
+        const eventText = `${event.title} ${event.description || ''}`.toLowerCase();
+        const hasKeyword = options.filterKeywords.some(keyword => 
+          eventText.includes(keyword.toLowerCase())
+        );
+        if (!hasKeyword) return false;
+      }
+
+      // Exclude private events if specified
+      if (options.excludePrivate && event.originalEvent?.visibility === 'private') {
+        return false;
+      }
+
+      // Only include online meetings if auto-record is enabled
+      if (options.autoRecord && !event.isOnlineMeeting) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  /**
+   * Sync events to database
+   */
+  private async syncEventsToDatabase(
+    events: CalendarEvent[],
+    options: SyncOptions
+  ): Promise<{
+    eventsCreated: number;
+    eventsUpdated: number;
+    eventsDeleted: number;
+  }> {
+    let eventsCreated = 0;
+    let eventsUpdated = 0;
+    let eventsDeleted = 0;
+
+    for (const event of events) {
+      const existingMeeting = await prisma.meeting.findFirst({
+        where: {
+          externalId: event.id,
+          platform: event.provider,
+        },
+      });
+
+      if (existingMeeting) {
+        // Update existing meeting
+        await prisma.meeting.update({
+          where: { id: existingMeeting.id },
+          data: {
+            title: event.title,
+            description: event.description,
+            scheduledStartAt: event.startTime,
+            scheduledEndAt: event.endTime,
+            meetingUrl: event.meetingUrl,
+            location: event.location,
+            metadata: {
+              ...event.originalEvent,
+              attendees: event.attendees,
+            },
+          },
+        });
+
+        // Update participants
+        // Delete existing participants
+        await prisma.meetingParticipant.deleteMany({
+          where: { meetingId: existingMeeting.id },
+        });
+
+        // Create new participants
+        if (event.attendees && event.attendees.length > 0) {
+          await prisma.meetingParticipant.createMany({
+            data: event.attendees.map(attendee => ({
+              meetingId: existingMeeting.id,
+              email: attendee.email,
+              name: attendee.name,
+              status: attendee.status || 'accepted',
+              isOrganizer: attendee.isOrganizer || false,
+            })),
+          });
+        }
+
+        eventsUpdated++;
+      } else {
+        // Create new meeting with participants
+        const newMeeting = await prisma.meeting.create({
+          data: {
+            externalId: event.id,
+            organizationId: options.organizationId,
+            createdBy: options.userId,
+            platform: event.provider,
+            title: event.title,
+            description: event.description,
+            scheduledStartAt: event.startTime,
+            scheduledEndAt: event.endTime,
+            meetingUrl: event.meetingUrl,
+            location: event.location,
+            isRecurring: event.isRecurring,
+            autoRecord: options.autoRecord || false,
+            metadata: {
+              ...event.originalEvent,
+              attendees: event.attendees,
+            },
+            status: 'scheduled',
+            userId: options.userId,
+          },
+        });
+
+        // Create participants
+        if (event.attendees && event.attendees.length > 0) {
+          await prisma.meetingParticipant.createMany({
+            data: event.attendees.map(attendee => ({
+              meetingId: newMeeting.id,
+              email: attendee.email,
+              name: attendee.name,
+              status: attendee.status || 'accepted',
+              isOrganizer: attendee.isOrganizer || false,
+            })),
+          });
+        }
+
+        eventsCreated++;
+      }
+    }
+
+    // Mark deleted events (optional)
+    if (options.syncDirection === 'two-way') {
+      const eventIds = events.map(e => e.id);
+      const providerStrings = options.providers.map(p => p.toString());
+      const deletedMeetings = await prisma.meeting.updateMany({
+        where: {
+          organizationId: options.organizationId,
+          externalId: { notIn: eventIds },
+          platform: { in: providerStrings },
+          status: 'scheduled',
+        },
+        data: {
+          status: 'cancelled',
+        },
+      });
+      eventsDeleted = deletedMeetings.count;
+    }
+
+    return {
+      eventsCreated,
+      eventsUpdated,
+      eventsDeleted,
+    };
+  }
+
+  /**
+   * Schedule auto-recording for meetings
+   */
+  private async scheduleAutoRecording(
+    events: CalendarEvent[],
+    options: SyncOptions
+  ): Promise<void> {
+    const upcomingMeetings = events.filter(event => 
+      event.isOnlineMeeting && 
+      event.startTime > new Date() &&
+      event.startTime < new Date(Date.now() + 24 * 60 * 60 * 1000) // Next 24 hours
+    );
+
+    for (const event of upcomingMeetings) {
+      // Schedule bot to join meeting
+      const jobTime = new Date(event.startTime.getTime() - 60000); // 1 minute before
+
+      await this.queueService.addJob(JobType.MEETING_BOT_JOIN, {
+        type: JobType.MEETING_BOT_JOIN,
+        payload: {
+          platform: event.provider,
+          meetingUrl: event.meetingUrl,
+          meetingId: event.id,
+          scheduledAt: jobTime,
+        },
+        organizationId: options.organizationId,
+      });
+
+      logger.info(`Scheduled auto-recording for meeting: ${event.title} at ${event.startTime}`);
+    }
+  }
+
+  /**
+   * Stop sync for a user
+   */
+  async stopSync(userId: string): Promise<void> {
+    const syncId = `sync_${userId}_*`;
+    
+    // Stop all sync jobs for user
+    for (const [id, job] of this.syncJobs.entries()) {
+      if (id.startsWith(`sync_${userId}`)) {
+        job.stop();
+        this.syncJobs.delete(id);
+      }
+    }
+
+    // Update database
+    await prisma.calendarSync.update({
+      where: { userId },
+      data: { isActive: false },
+    });
+
+    // Clear clients
+    this.googleClients.delete(userId);
+    this.outlookClients.delete(userId);
+
+    logger.info(`Calendar sync stopped for user ${userId}`);
+  }
+
+  /**
+   * Get sync status
+   */
+  async getSyncStatus(userId: string): Promise<any> {
+    const sync = await prisma.calendarSync.findUnique({
+      where: { userId },
+    });
+
+    if (!sync) {
+      return {
+        isActive: false,
+        message: 'Calendar sync not configured',
+      };
+    }
+
+    return {
+      isActive: sync.isActive,
+      providers: sync.providers,
+      lastSyncedAt: sync.lastSyncedAt,
+      syncDirection: sync.syncDirection,
+      autoRecord: sync.autoRecord,
+      configuration: {
+        syncPastDays: sync.syncPastDays,
+        syncFutureDays: sync.syncFutureDays,
+        filterKeywords: sync.filterKeywords,
+        excludePrivate: sync.excludePrivate,
+      },
+    };
+  }
+
+  /**
+   * Manually trigger sync
+   */
+  async triggerSync(userId: string): Promise<SyncResult[]> {
+    const sync = await prisma.calendarSync.findUnique({
+      where: { userId },
+    });
+
+    if (!sync || !sync.isActive) {
+      throw new Error('Calendar sync not active for user');
+    }
+
+    const options: SyncOptions = {
+      userId: sync.userId,
+      organizationId: sync.organizationId,
+      providers: sync.providers as CalendarProvider[],
+      syncDirection: sync.syncDirection as 'one-way' | 'two-way',
+      autoRecord: sync.autoRecord,
+      syncPastDays: sync.syncPastDays,
+      syncFutureDays: sync.syncFutureDays,
+      filterKeywords: sync.filterKeywords,
+      excludePrivate: sync.excludePrivate,
+    };
+
+    return this.performSync(options);
+  }
+
+  /**
+   * Update sync configuration
+   */
+  async updateSyncConfiguration(
+    userId: string,
+    updates: Partial<SyncOptions>
+  ): Promise<void> {
+    await prisma.calendarSync.update({
+      where: { userId },
+      data: updates,
+    });
+
+    // Restart sync job if active
+    const sync = await prisma.calendarSync.findUnique({
+      where: { userId },
+    });
+
+    if (sync?.isActive) {
+      await this.stopSync(userId);
+      await this.initializeSync({
+        userId: sync.userId,
+        organizationId: sync.organizationId,
+        providers: sync.providers as CalendarProvider[],
+        syncDirection: sync.syncDirection as 'one-way' | 'two-way',
+        ...updates,
+      });
+    }
+  }
+}

@@ -1,0 +1,112 @@
+# Authentication Load Test - 1000 Concurrent Users
+# Tests login, registration, token refresh, and session management
+
+config:
+  target: "http://localhost:4000"
+  phases:
+    # Simulate 1000 concurrent login attempts
+    - duration: 30
+      arrivalRate: 50
+      name: "Initial burst"
+    - duration: 120
+      arrivalRate: 100
+      name: "1000 concurrent users sustained"
+    - duration: 60
+      arrivalRate: 150
+      name: "Peak login time"
+
+  ensure:
+    maxErrorRate: 2
+    p95: 150 # Login should be fast
+    p99: 300
+
+  plugins:
+    metrics-by-endpoint: {}
+    expect: {}
+
+  processor: "../processors/auth-processor.js"
+
+scenarios:
+  - name: "User Login"
+    weight: 60
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "user-{{ $randomNumber(1, 10000) }}@loadtest.com"
+            password: "TestPassword123!"
+          expect:
+            - statusCode: [200, 401]
+          capture:
+            - json: "$.token"
+              as: "authToken"
+          afterResponse: "validateAuthResponse"
+
+      # Verify token works
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+
+      - think: 2 # Simulate user reading
+
+  - name: "User Registration"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "newuser-{{ $randomString() }}@loadtest.com"
+            password: "SecurePass123!"
+            name: "Load Test User {{ $randomNumber(1, 99999) }}"
+            organizationName: "Test Org {{ $randomNumber(1, 1000) }}"
+          expect:
+            - statusCode: [201, 200, 400, 409]
+          capture:
+            - json: "$.token"
+              as: "newToken"
+
+  - name: "Token Refresh"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "oldToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+
+      - post:
+          url: "/api/auth/refresh"
+          json:
+            refreshToken: "{{ refreshToken }}"
+          expect:
+            - statusCode: [200, 401]
+          capture:
+            - json: "$.token"
+              as: "newToken"
+
+  - name: "Logout"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - post:
+          url: "/api/auth/logout"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 204, 401]

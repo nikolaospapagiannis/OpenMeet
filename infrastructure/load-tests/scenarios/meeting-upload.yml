@@ -1,0 +1,135 @@
+# Meeting Upload Load Test - 500 Concurrent Uploads
+# Tests file upload, processing queue, and metadata extraction
+
+config:
+  target: "http://localhost:4000"
+  phases:
+    # Simulate 500 concurrent meeting uploads
+    - duration: 60
+      arrivalRate: 25
+      name: "Gradual upload start"
+    - duration: 180
+      arrivalRate: 50
+      name: "500 concurrent uploads"
+    - duration: 120
+      arrivalRate: 100
+      name: "Peak upload time"
+
+  ensure:
+    maxErrorRate: 3 # Uploads can be more error-prone
+    p95: 2000 # Uploads take longer (2s)
+    p99: 5000
+
+  plugins:
+    metrics-by-endpoint: {}
+
+  payload:
+    path: "../payloads/meeting-data.csv"
+    fields:
+      - "meetingTitle"
+      - "duration"
+      - "participants"
+
+  processor: "../processors/upload-processor.js"
+
+scenarios:
+  - name: "Meeting File Upload"
+    weight: 50
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - post:
+          url: "/api/meetings/upload"
+          headers:
+            Authorization: "Bearer {{ token }}"
+            Content-Type: "multipart/form-data"
+          formData:
+            title: "{{ meetingTitle }}"
+            duration: "{{ duration }}"
+            file: "@../payloads/sample-meeting.mp4"
+          expect:
+            - statusCode: [200, 201, 401, 413]
+          capture:
+            - json: "$.meetingId"
+              as: "uploadedMeetingId"
+
+      - think: 1
+
+      # Check upload status
+      - get:
+          url: "/api/meetings/{{ uploadedMeetingId }}/status"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401, 404]
+
+  - name: "Meeting Metadata Update"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      # Create meeting via API
+      - post:
+          url: "/api/meetings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            title: "Load Test Meeting {{ $randomString() }}"
+            startTime: "{{ $timestamp() }}"
+            duration: 1800
+            participants: ["user1@test.com", "user2@test.com"]
+          expect:
+            - statusCode: [200, 201, 401]
+          capture:
+            - json: "$.id"
+              as: "meetingId"
+
+      # Update metadata
+      - patch:
+          url: "/api/meetings/{{ meetingId }}"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            title: "Updated Meeting Title"
+            tags: ["important", "client-call"]
+          expect:
+            - statusCode: [200, 401, 404]
+
+  - name: "Bulk Meeting Creation"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - loop:
+          - post:
+              url: "/api/meetings"
+              headers:
+                Authorization: "Bearer {{ token }}"
+              json:
+                title: "Batch Meeting {{ $loopCount }}"
+                startTime: "{{ $timestamp() }}"
+                duration: 900
+              expect:
+                - statusCode: [200, 201, 401, 429]
+        count: 5

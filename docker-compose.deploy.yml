@@ -1,0 +1,109 @@
+services:
+  # PostgreSQL Database - Port 4001
+  postgres:
+    image: postgres:15-alpine
+    container_name: openmeet-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-openmeet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openmeet123}
+      POSTGRES_DB: ${POSTGRES_DB:-openmeet_db}
+    ports:
+      - '4001:5432'
+    volumes:
+      - openmeet_postgres_data:/var/lib/postgresql/data
+    networks:
+      - openmeet-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U openmeet']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache - Port 4002
+  redis:
+    image: redis:7-alpine
+    container_name: openmeet-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis123}
+    ports:
+      - '4002:6379'
+    volumes:
+      - openmeet_redis_data:/data
+    networks:
+      - openmeet-network
+    healthcheck:
+      test: ['CMD', 'redis-cli -a redis123', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Elasticsearch for Search - Port 4003
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: openmeet-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - 'ES_JAVA_OPTS=-Xms256m -Xmx256m'
+    ports:
+      - '4003:9200'
+    volumes:
+      - openmeet_elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - openmeet-network
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -f http://localhost:9200/_cluster/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # RabbitMQ for Message Queue - Port 4004 (AMQP), 4005 (Management)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: openmeet-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-openmeet}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-openmeet123}
+    ports:
+      - '4004:5672'
+      - '4005:15672'
+    volumes:
+      - openmeet_rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - openmeet-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # MinIO for S3-compatible Storage - Port 4006 (API), 4007 (Console)
+  minio:
+    image: minio/minio:latest
+    container_name: openmeet-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-openmeet}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minio123456}
+    ports:
+      - '4006:9000'
+      - '4007:9001'
+    volumes:
+      - openmeet_minio_data:/data
+    networks:
+      - openmeet-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+networks:
+  openmeet-network:
+    driver: bridge
+
+volumes:
+  openmeet_postgres_data:
+  openmeet_redis_data:
+  openmeet_elasticsearch_data:
+  openmeet_rabbitmq_data:
+  openmeet_minio_data:

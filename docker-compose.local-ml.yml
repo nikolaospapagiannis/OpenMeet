@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # AI Service with Local ML Models (GPU-accelerated)
+  ai-service-local:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile.local-ml
+    container_name: openmeet-service-local
+    ports:
+      - "8001:8000"
+    environment:
+      # Provider Configuration
+      - LOCAL_MODELS_ENABLED=true
+      - LOCAL_PRIORITY=10
+      - LOCAL_WHISPER_MODEL=large-v3
+      - LOCAL_LLM_MODEL=llama-3.1-8b
+      - LOCAL_QUANTIZATION=4bit
+      - LOCAL_DEVICE=auto
+
+      # HuggingFace Token (optional, for gated models)
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+
+      # OpenAI (optional fallback)
+      - OPENAI_ENABLED=true
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_PRIORITY=50
+
+      # Anthropic (optional fallback)
+      - ANTHROPIC_ENABLED=false
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_PRIORITY=60
+
+      # Strategy
+      - PROVIDER_STRATEGY=fallback
+
+      # Performance
+      - WORKERS=2
+      - LOG_LEVEL=info
+
+    volumes:
+      # Persist model cache
+      - ml-models-cache:/root/.cache/huggingface
+      # Config persistence
+      - ./data/provider-config:/root/.openmeet
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            # GPU support (NVIDIA)
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 24G
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Allow time for model loading
+
+    restart: unless-stopped
+
+  # API Service (connects to AI service)
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: openmeet-api
+    ports:
+      - "3000:3000"
+    environment:
+      - AI_SERVICE_URL=http://ai-service-local:8000
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      - ai-service-local
+    restart: unless-stopped
+
+  # Model Downloader (one-time setup)
+  model-downloader:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile.model-downloader
+    container_name: openmeet-model-downloader
+    environment:
+      - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN}
+      - MODELS_TO_DOWNLOAD=whisper-large-v3,llama-3.1-8b,bge-large-en-v1.5
+    volumes:
+      - ml-models-cache:/root/.cache/huggingface
+    profiles:
+      - setup  # Only run with: docker-compose --profile setup up model-downloader
+
+volumes:
+  ml-models-cache:
+    driver: local
+
+networks:
+  default:
+    name: openmeet-network

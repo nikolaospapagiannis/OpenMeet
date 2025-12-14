@@ -1,0 +1,131 @@
+{
+  "index_patterns": ["logs-api-*", "logs-beats-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-ilm-policy",
+      "index.lifecycle.rollover_alias": "logs-api",
+      "refresh_interval": "30s",
+      "codec": "best_compression",
+      "max_result_window": 50000
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date",
+          "format": "strict_date_optional_time||epoch_millis"
+        },
+        "correlation_id": {
+          "type": "keyword"
+        },
+        "service": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "keyword"
+        },
+        "environment": {
+          "type": "keyword"
+        },
+        "hostname": {
+          "type": "keyword"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "log_level": {
+          "type": "keyword"
+        },
+        "log_message": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "module": {
+          "type": "keyword"
+        },
+        "http_method": {
+          "type": "keyword"
+        },
+        "http_url": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 512
+            }
+          }
+        },
+        "http_status": {
+          "type": "integer"
+        },
+        "http_user_agent": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "client_ip": {
+          "type": "ip"
+        },
+        "response_time_ms": {
+          "type": "float"
+        },
+        "kubernetes": {
+          "properties": {
+            "namespace": {
+              "type": "keyword"
+            },
+            "pod": {
+              "type": "keyword"
+            },
+            "container": {
+              "type": "keyword"
+            },
+            "node": {
+              "type": "keyword"
+            }
+          }
+        },
+        "k8s_namespace": {
+          "type": "keyword"
+        },
+        "k8s_pod": {
+          "type": "keyword"
+        },
+        "k8s_container": {
+          "type": "keyword"
+        },
+        "k8s_node": {
+          "type": "keyword"
+        },
+        "error": {
+          "properties": {
+            "message": {
+              "type": "text"
+            },
+            "stack": {
+              "type": "text"
+            },
+            "type": {
+              "type": "keyword"
+            }
+          }
+        }
+      }
+    }
+  },
+  "priority": 100,
+  "version": 1,
+  "_meta": {
+    "description": "Template for application logs from API and services"
+  }
+}

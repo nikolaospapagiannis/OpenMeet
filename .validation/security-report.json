@@ -1,0 +1,66 @@
+{
+  "generatedAt": "2025-08-17T08:51:51.063Z",
+  "aggregate": {
+    "total": {
+      "critical": 0,
+      "high": 0,
+      "moderate": 0,
+      "low": 0,
+      "all": 0
+    }
+  },
+  "results": [
+    {
+      "cwd": "F:\\ClaudeMCP",
+      "ok": false,
+      "error": "spawnSync npm ENOENT",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "total": 0
+      },
+      "raw": null
+    },
+    {
+      "cwd": "F:\\ClaudeMCP\\exai-guard",
+      "ok": false,
+      "error": "spawnSync npm ENOENT",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "total": 0
+      },
+      "raw": null
+    },
+    {
+      "cwd": "F:\\ClaudeMCP\\exai-guard\\server",
+      "ok": false,
+      "error": "spawnSync npm ENOENT",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "total": 0
+      },
+      "raw": null
+    },
+    {
+      "cwd": "F:\\ClaudeMCP\\exai-guard\\client",
+      "ok": false,
+      "error": "spawnSync npm ENOENT",
+      "counts": {
+        "critical": 0,
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "total": 0
+      },
+      "raw": null
+    }
+  ]
+}

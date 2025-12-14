@@ -1,0 +1,432 @@
+const fs = require('fs');
+
+const content = `'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Check, X, RefreshCw, ExternalLink, Video, Calendar, Bell, FileText, Sparkles, Mic } from 'lucide-react';
+import { Button } from '@/components/ui/button-v2';
+import { CardGlass } from '@/components/ui/card-glass';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import apiClient from '@/lib/api';
+
+export default function GoogleMeetSettingsPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const [integration, setIntegration] = useState<any>(null);
+  const [settings, setSettings] = useState({
+    autoJoinMeetings: true,
+    recordAudio: true,
+    recordVideo: false,
+    enableTranscription: true,
+    enableSummary: true,
+    sendNotifications: true,
+    botName: 'Fireflies Notetaker',
+    syncCalendar: true,
+  });
+
+  useEffect(() => {
+    fetchIntegration();
+  }, []);
+
+  const fetchIntegration = async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiClient.getIntegrationStatus('meet');
+      setIntegration(data);
+
+      if (data.settings) {
+        setSettings({
+          autoJoinMeetings: data.settings.autoJoinMeetings ?? true,
+          recordAudio: data.settings.recordAudio ?? true,
+          recordVideo: data.settings.recordVideo ?? false,
+          enableTranscription: data.settings.enableTranscription ?? true,
+          enableSummary: data.settings.enableSummary ?? true,
+          sendNotifications: data.settings.sendNotifications ?? true,
+          botName: data.settings.botName || 'Fireflies Notetaker',
+          syncCalendar: data.settings.syncCalendar ?? true,
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch Google Meet integration:', err);
+      setError('Failed to load Google Meet settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const response = await apiClient.initiateIntegrationOAuth('meet');
+      if (response.authUrl) {
+        window.location.href = response.authUrl;
+      }
+    } catch (err: any) {
+      console.error('Failed to connect Google Meet:', err);
+      setError(err.response?.data?.message || 'Failed to connect Google Meet');
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm('Are you sure you want to disconnect Google Meet? This will stop the bot from joining your meetings.')) {
+      return;
+    }
+
+    setError('');
+    setIsLoading(true);
+    try {
+      await apiClient.disconnectIntegration('meet');
+      setIntegration(null);
+      setSuccess('Google Meet disconnected successfully');
+    } catch (err: any) {
+      console.error('Failed to disconnect Google Meet:', err);
+      setError(err.response?.data?.message || 'Failed to disconnect Google Meet');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setError('');
+    setSuccess('');
+    setIsSaving(true);
+    try {
+      await apiClient.updateIntegrationSettings('meet', settings);
+      setSuccess('Settings saved successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      console.error('Failed to save settings:', err);
+      setError(err.response?.data?.message || 'Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggle = (field: keyof typeof settings) => {
+    setSettings((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleInputChange = (field: keyof typeof settings, value: string) => {
+    setSettings((prev) => ({ ...prev, [field]: value }));
+  };
+
+  if (isLoading && !integration) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto text-teal-500 mb-4" />
+          <p className="text-slate-400">Loading Google Meet settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isConnected = integration && integration.status === 'connected';
+
+  return (
+    <div className="min-h-screen bg-slate-950">
+      {/* Ambient background effects */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl" />
+      </div>
+
+      <div className="relative max-w-4xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          <Link href="/integrations">
+            <Button variant="ghost-glass" className="mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Integrations
+            </Button>
+          </Link>
+          <div className="flex items-center gap-4">
+            <div className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl p-3 shadow-lg shadow-teal-500/20">
+              <Video className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Google Meet Integration</h1>
+              <p className="text-slate-400 mt-1">
+                Configure how Fireflies joins and records your Google Meet meetings
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Status Messages */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg mb-6 backdrop-blur-sm">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-lg mb-6 flex items-center backdrop-blur-sm">
+            <Check className="h-5 w-5 mr-2" />
+            {success}
+          </div>
+        )}
+
+        {/* Connection Status Card */}
+        <CardGlass variant="elevated" className="mb-6">
+          <div className="p-6">
+            <h2 className="text-xl font-semibold text-white mb-2">Connection Status</h2>
+            <p className="text-slate-400 mb-6">
+              {isConnected
+                ? 'Your Google account is connected to Fireflies'
+                : 'Connect your Google account to enable automatic meeting transcription'}
+            </p>
+
+            {isConnected ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg">
+                      <Check className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">Connected</p>
+                      <p className="text-sm text-slate-400">
+                        Connected as {integration.metadata?.email || 'Google User'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="destructive" onClick={handleDisconnect} disabled={isLoading}>
+                    Disconnect
+                  </Button>
+                </div>
+
+                <div className="text-sm text-slate-400">
+                  <p className="font-medium mb-1 text-slate-300">Connected since:</p>
+                  <p>{new Date(integration.connectedAt).toLocaleString()}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-slate-700/50 rounded-lg">
+                      <X className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">Not Connected</p>
+                      <p className="text-sm text-slate-400">
+                        Connect your Google account to start recording meetings
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="gradient-primary" onClick={handleConnect} disabled={isLoading}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Connect Google
+                  </Button>
+                </div>
+
+                <div className="bg-teal-500/10 border border-teal-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-teal-400 mb-2">What happens when you connect?</h4>
+                  <ul className="list-disc list-inside text-sm text-slate-300 space-y-1">
+                    <li>Fireflies will get permission to access your Google Calendar</li>
+                    <li>The bot will automatically join scheduled Google Meet meetings</li>
+                    <li>You will get AI-generated meeting notes and summaries</li>
+                    <li>All recordings are stored securely in your account</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardGlass>
+
+        {/* Bot Settings (only show if connected) */}
+        {isConnected && (
+          <CardGlass variant="elevated" className="mb-6">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-white mb-2">Bot Settings</h2>
+              <p className="text-slate-400 mb-6">
+                Configure how the Fireflies bot behaves in your meetings
+              </p>
+
+              <div className="space-y-6">
+                {/* Sync Calendar */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/20 rounded-lg">
+                      <Calendar className="h-5 w-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Sync Google Calendar</Label>
+                      <p className="text-sm text-slate-400">
+                        Automatically detect meetings from your Google Calendar
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.syncCalendar}
+                    onCheckedChange={() => handleToggle('syncCalendar')}
+                  />
+                </div>
+
+                {/* Auto-join Meetings */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-teal-500/20 rounded-lg">
+                      <Video className="h-5 w-5 text-teal-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Auto-join meetings</Label>
+                      <p className="text-sm text-slate-400">
+                        Automatically join scheduled Google Meet meetings
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.autoJoinMeetings}
+                    onCheckedChange={() => handleToggle('autoJoinMeetings')}
+                  />
+                </div>
+
+                {/* Bot Name */}
+                <div className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <Label htmlFor="botName" className="text-white font-medium">Bot display name</Label>
+                  <Input
+                    id="botName"
+                    value={settings.botName}
+                    onChange={(e) => handleInputChange('botName', e.target.value)}
+                    placeholder="Fireflies Notetaker"
+                    className="mt-2 bg-slate-900/50 border-slate-700 text-white placeholder:text-slate-500"
+                  />
+                  <p className="text-sm text-slate-400 mt-2">
+                    This name will appear when the bot joins meetings
+                  </p>
+                </div>
+
+                {/* Record Audio */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-cyan-500/20 rounded-lg">
+                      <Mic className="h-5 w-5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Record audio</Label>
+                      <p className="text-sm text-slate-400">
+                        Enable audio recording for transcription
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.recordAudio}
+                    onCheckedChange={() => handleToggle('recordAudio')}
+                  />
+                </div>
+
+                {/* Record Video */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-rose-500/20 rounded-lg">
+                      <Video className="h-5 w-5 text-rose-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Record video</Label>
+                      <p className="text-sm text-slate-400">
+                        Record video of the meeting (increases storage)
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.recordVideo}
+                    onCheckedChange={() => handleToggle('recordVideo')}
+                  />
+                </div>
+
+                {/* Enable Transcription */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/20 rounded-lg">
+                      <FileText className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Enable transcription</Label>
+                      <p className="text-sm text-slate-400">
+                        Generate text transcripts of conversations
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.enableTranscription}
+                    onCheckedChange={() => handleToggle('enableTranscription')}
+                  />
+                </div>
+
+                {/* Enable Summary */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-violet-500/20 rounded-lg">
+                      <Sparkles className="h-5 w-5 text-violet-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Generate AI summaries</Label>
+                      <p className="text-sm text-slate-400">
+                        Create meeting summaries with key points and action items
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.enableSummary}
+                    onCheckedChange={() => handleToggle('enableSummary')}
+                  />
+                </div>
+
+                {/* Send Notifications */}
+                <div className="flex items-center justify-between p-4 bg-slate-800/30 rounded-lg border border-slate-700/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-500/20 rounded-lg">
+                      <Bell className="h-5 w-5 text-emerald-400" />
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Send notifications</Label>
+                      <p className="text-sm text-slate-400">
+                        Get notified when transcripts are ready
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings.sendNotifications}
+                    onCheckedChange={() => handleToggle('sendNotifications')}
+                  />
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-4">
+                  <Button variant="gradient-primary" onClick={handleSaveSettings} disabled={isSaving} className="w-full">
+                    {isSaving ? 'Saving...' : 'Save Settings'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardGlass>
+        )}
+
+        {/* Help */}
+        <div className="text-center text-sm text-slate-500">
+          Need help? Check out our{' '}
+          <a href="/docs/google-meet-integration" className="text-teal-400 hover:text-teal-300 transition-colors">
+            Google Meet integration guide
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+`;
+
+fs.writeFileSync('G:/fireff-v2/apps/web/src/app/(dashboard)/integrations/google-meet/settings/page.tsx', content);
+console.log('File written successfully');

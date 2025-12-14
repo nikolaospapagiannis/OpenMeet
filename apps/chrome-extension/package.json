@@ -1,0 +1,20 @@
+{
+  "name": "openmeet-chrome-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for automatically recording and transcribing web meetings",
+  "author": "OpenMeet Team",
+  "license": "MIT",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch",
+    "package": "npm run build && zip -r openmeet-extension.zip manifest.json background.js popup.* content-scripts/ styles/ icons/ scripts/",
+    "clean": "rm -rf dist/ *.zip"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.251",
+    "copy-webpack-plugin": "^11.0.0",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {}
+}

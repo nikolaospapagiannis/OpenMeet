@@ -1,0 +1,184 @@
+# WebSocket Load Test - 1000 Concurrent Connections
+# Tests real-time transcription, live collaboration, and Socket.IO performance
+
+config:
+  target: "ws://localhost:4000"
+  phases:
+    # Ramp up to 1000 concurrent WebSocket connections
+    - duration: 60
+      arrivalRate: 50
+      name: "WebSocket connection ramp-up"
+    - duration: 300
+      arrivalRate: 100
+      name: "1000 concurrent connections sustained"
+    - duration: 120
+      arrivalRate: 150
+      name: "Peak WebSocket load"
+
+  ensure:
+    maxErrorRate: 2
+    p95: 50 # WebSocket messages should be very fast
+    p99: 100
+
+  plugins:
+    metrics-by-endpoint: {}
+
+  processor: "../processors/websocket-processor.js"
+
+  # WebSocket engine
+  engines:
+    socketio:
+      transports: ["websocket"]
+
+scenarios:
+  - name: "Live Meeting Connection"
+    engine: socketio
+    weight: 40
+    flow:
+      # Authenticate via HTTP first
+      - post:
+          url: "http://localhost:4000/api/auth/login"
+          json:
+            email: "user-{{ $randomNumber(1, 100) }}@loadtest.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+
+      # Connect to WebSocket
+      - emit:
+          channel: "authenticate"
+          data:
+            token: "{{ authToken }}"
+
+      # Join a meeting room
+      - emit:
+          channel: "join-meeting"
+          data: "meeting-{{ $randomNumber(1, 50) }}"
+
+      # Listen for transcription updates
+      - think: 5
+
+      # Send heartbeat
+      - loop:
+          - emit:
+              channel: "heartbeat"
+              data:
+                timestamp: "{{ $timestamp() }}"
+          - think: 2
+        count: 10
+
+      # Leave meeting
+      - emit:
+          channel: "leave-meeting"
+          data: "meeting-{{ $randomNumber(1, 50) }}"
+
+  - name: "Real-time Transcription Stream"
+    engine: socketio
+    weight: 30
+    flow:
+      - post:
+          url: "http://localhost:4000/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+
+      - emit:
+          channel: "authenticate"
+          data:
+            token: "{{ authToken }}"
+
+      - emit:
+          channel: "join-meeting"
+          data: "meeting-load-test"
+
+      # Simulate receiving and sending transcription updates
+      - loop:
+          - emit:
+              channel: "transcription-update"
+              data:
+                meetingId: "meeting-load-test"
+                text: "This is a test transcription segment {{ $loopCount }}"
+                timestamp: "{{ $timestamp() }}"
+                speaker: "Speaker {{ $randomNumber(1, 5) }}"
+          - think: 0.5
+        count: 20
+
+  - name: "Live Collaboration Events"
+    engine: socketio
+    weight: 20
+    flow:
+      - post:
+          url: "http://localhost:4000/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+
+      - emit:
+          channel: "authenticate"
+          data:
+            token: "{{ authToken }}"
+
+      - emit:
+          channel: "join-meeting"
+          data: "collab-meeting-{{ $randomNumber(1, 20) }}"
+
+      # Send various collaboration events
+      - emit:
+          channel: "highlight-created"
+          data:
+            meetingId: "collab-meeting-{{ $randomNumber(1, 20) }}"
+            timestamp: "{{ $timestamp() }}"
+            text: "Important point"
+
+      - think: 1
+
+      - emit:
+          channel: "note-added"
+          data:
+            meetingId: "collab-meeting-{{ $randomNumber(1, 20) }}"
+            note: "Test note {{ $randomString() }}"
+
+      - think: 2
+
+      - emit:
+          channel: "reaction-sent"
+          data:
+            meetingId: "collab-meeting-{{ $randomNumber(1, 20) }}"
+            reaction: "👍"
+            timestamp: "{{ $timestamp() }}"
+
+  - name: "Connection Stress Test"
+    engine: socketio
+    weight: 10
+    flow:
+      - post:
+          url: "http://localhost:4000/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "authToken"
+
+      # Rapid connect/disconnect cycles
+      - loop:
+          - emit:
+              channel: "authenticate"
+              data:
+                token: "{{ authToken }}"
+          - emit:
+              channel: "join-meeting"
+              data: "stress-test-meeting"
+          - think: 0.5
+          - emit:
+              channel: "leave-meeting"
+              data: "stress-test-meeting"
+          - think: 0.5
+        count: 5

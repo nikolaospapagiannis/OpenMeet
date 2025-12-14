@@ -1,0 +1,149 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - link "openmeet.com" [ref=e6] [cursor=pointer]:
+        - /url: /dashboard
+        - generic [ref=e7]:
+          - img [ref=e9]
+          - generic [ref=e12]: openmeet.com
+      - navigation [ref=e13]:
+        - link "Home" [ref=e14] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e15]:
+            - img [ref=e16]
+            - generic [ref=e19]: Home
+        - link "Meetings" [ref=e20] [cursor=pointer]:
+          - /url: /meetings
+          - generic [ref=e21]:
+            - img [ref=e22]
+            - generic [ref=e24]: Meetings
+        - link "Ask AI" [ref=e25] [cursor=pointer]:
+          - /url: /ask-ai
+          - generic [ref=e26]:
+            - img [ref=e27]
+            - generic [ref=e29]: Ask AI
+        - link "Templates" [ref=e30] [cursor=pointer]:
+          - /url: /templates
+          - generic [ref=e31]:
+            - img [ref=e32]
+            - generic [ref=e36]: Templates
+        - link "Meeting Status" [ref=e37] [cursor=pointer]:
+          - /url: /meeting-status
+          - generic [ref=e38]:
+            - img [ref=e39]
+            - generic [ref=e41]: Meeting Status
+        - link "Uploads" [ref=e42] [cursor=pointer]:
+          - /url: /uploads
+          - generic [ref=e43]:
+            - img [ref=e44]
+            - generic [ref=e47]: Uploads
+        - link "Integrations" [ref=e48] [cursor=pointer]:
+          - /url: /integrations
+          - generic [ref=e49]:
+            - img [ref=e50]
+            - generic [ref=e52]: Integrations
+        - link "Analytics" [ref=e53] [cursor=pointer]:
+          - /url: /analytics
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - generic [ref=e57]: Analytics
+        - link "AI Apps" [ref=e58] [cursor=pointer]:
+          - /url: /ai-apps
+          - generic [ref=e59]:
+            - img [ref=e60]
+            - generic [ref=e63]: AI Apps
+        - link "Coaching" [ref=e64] [cursor=pointer]:
+          - /url: /coaching
+          - generic [ref=e65]:
+            - img [ref=e66]
+            - generic [ref=e69]: Coaching
+        - link "Topics" [ref=e70] [cursor=pointer]:
+          - /url: /topics
+          - generic [ref=e71]:
+            - img [ref=e72]
+            - generic [ref=e75]: Topics
+        - link "Team" [ref=e76] [cursor=pointer]:
+          - /url: /settings/team
+          - generic [ref=e77]:
+            - img [ref=e78]
+            - generic [ref=e83]: Team
+        - link "Settings" [ref=e84] [cursor=pointer]:
+          - /url: /settings
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - generic [ref=e89]: Settings
+      - generic [ref=e91]:
+        - paragraph [ref=e92]: Free Plan
+        - paragraph [ref=e93]: 5 meetings remaining
+        - button "Upgrade Plan" [ref=e94] [cursor=pointer]
+    - generic [ref=e95]:
+      - generic [ref=e96]:
+        - generic [ref=e99]:
+          - img
+          - textbox "Search meetings, transcripts, action items..." [ref=e100]
+          - button [ref=e102] [cursor=pointer]:
+            - img [ref=e104]
+        - generic [ref=e106]:
+          - generic [ref=e107]: Free Plan
+          - link "Capture" [ref=e109] [cursor=pointer]:
+            - /url: /meetings/new
+            - button "Capture" [ref=e110]:
+              - img [ref=e111]
+              - text: Capture
+          - button [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+          - button "Notifications" [ref=e117] [cursor=pointer]:
+            - img [ref=e119]
+          - button "User menu" [ref=e123] [cursor=pointer]:
+            - generic [ref=e126]: JA
+            - generic [ref=e128]:
+              - generic [ref=e129]: John Admin
+              - generic [ref=e130]: admin
+            - img [ref=e131]
+      - generic [ref=e134]:
+        - generic [ref=e136]:
+          - generic [ref=e137]:
+            - generic [ref=e138]:
+              - heading "Note Templates" [level=1] [ref=e139]
+              - paragraph [ref=e140]: Create and manage note templates for different meeting types
+            - button "Create Template" [ref=e141] [cursor=pointer]:
+              - img [ref=e142]
+              - text: Create Template
+          - generic [ref=e143]:
+            - generic [ref=e144]:
+              - img [ref=e145]
+              - textbox "Search templates..." [ref=e148]
+            - generic [ref=e149]:
+              - button "All Templates" [ref=e150] [cursor=pointer]
+              - button "Sales 0" [ref=e151] [cursor=pointer]:
+                - text: Sales
+                - generic [ref=e152]: "0"
+              - button "Customer Success 0" [ref=e153] [cursor=pointer]:
+                - text: Customer Success
+                - generic [ref=e154]: "0"
+              - button "Internal 0" [ref=e155] [cursor=pointer]:
+                - text: Internal
+                - generic [ref=e156]: "0"
+              - button "Interview 0" [ref=e157] [cursor=pointer]:
+                - text: Interview
+                - generic [ref=e158]: "0"
+              - button "Project 0" [ref=e159] [cursor=pointer]:
+                - text: Project
+                - generic [ref=e160]: "0"
+              - button "Custom 0" [ref=e161] [cursor=pointer]:
+                - text: Custom
+                - generic [ref=e162]: "0"
+        - generic [ref=e165]:
+          - img [ref=e166]
+          - heading "No templates found" [level=3] [ref=e169]
+          - paragraph [ref=e170]: Create your first template to get started
+          - button "Create Template" [ref=e171] [cursor=pointer]:
+            - img [ref=e172]
+            - text: Create Template
+    - button "Open quick actions menu" [ref=e174] [cursor=pointer]:
+      - img [ref=e176]
+```

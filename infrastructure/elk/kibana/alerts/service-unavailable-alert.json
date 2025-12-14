@@ -1,0 +1,45 @@
+{
+  "name": "Service Unavailable Alert",
+  "tags": ["availability", "production", "critical"],
+  "rule_type_id": ".es-query",
+  "params": {
+    "size": 100,
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [20],
+    "thresholdComparator": ">",
+    "searchConfiguration": {
+      "index": "logs-*",
+      "query": {
+        "query": "http_status:503 OR http_status:504",
+        "language": "kuery"
+      }
+    }
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "actions": [
+    {
+      "id": "slack-connector",
+      "group": "query matched",
+      "params": {
+        "message": "🚨 Service Unavailable Alert\n\nMultiple service unavailable errors detected.\n\n*Count:* {{context.value}}\n*Threshold:* 20\n*Time:* {{context.date}}\n\nCheck service health immediately!"
+      }
+    },
+    {
+      "id": "pagerduty-connector",
+      "group": "query matched",
+      "params": {
+        "severity": "critical",
+        "eventAction": "trigger",
+        "dedupKey": "service-unavailable-{{context.date}}",
+        "summary": "Service Unavailable - {{context.value}} errors",
+        "source": "Kibana Alert",
+        "component": "API Services"
+      }
+    }
+  ],
+  "notify_when": "onActionGroupChange",
+  "throttle": "5m"
+}

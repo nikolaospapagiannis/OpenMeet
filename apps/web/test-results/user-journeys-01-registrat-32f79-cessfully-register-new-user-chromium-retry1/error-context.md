@@ -1,0 +1,91 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - link "OpenMeet" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - heading "Get started free" [level=1] [ref=e7]
+      - paragraph [ref=e8]: Create your account in seconds
+      - button "Sign up with Google" [ref=e9] [cursor=pointer]:
+        - img [ref=e10]
+        - text: Sign up with Google
+      - button "Sign up with Microsoft" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+        - text: Sign up with Microsoft
+      - generic [ref=e26]: Or sign up with email
+      - generic [ref=e27]:
+        - generic [ref=e28]: Request burst detected. Your IP has been temporarily blocked.
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - generic [ref=e31]: First name
+            - textbox "First name" [ref=e32]:
+              - /placeholder: John
+              - text: E2E
+          - generic [ref=e33]:
+            - generic [ref=e34]: Last name
+            - textbox "Last name" [ref=e35]:
+              - /placeholder: Doe
+              - text: TestUser
+        - generic [ref=e36]:
+          - generic [ref=e37]: Work email
+          - textbox "Work email" [ref=e38]:
+            - /placeholder: name@company.com
+            - text: e2e-test-1765687653280-eoidvd@example.com
+        - generic [ref=e39]:
+          - generic [ref=e40]: Organization name (optional)
+          - textbox "Organization name (optional)" [ref=e41]:
+            - /placeholder: Acme Corp
+            - text: Test Organization
+        - generic [ref=e42]:
+          - generic [ref=e43]: Password
+          - textbox "Password" [ref=e44]:
+            - /placeholder: Create a password
+            - text: Test1765687653280!Aa
+        - generic [ref=e45]:
+          - generic [ref=e46]: Confirm password
+          - textbox "Confirm password" [ref=e47]:
+            - /placeholder: Confirm your password
+            - text: Test1765687653280!Aa
+        - generic [ref=e48]:
+          - checkbox [checked] [ref=e49]
+          - generic [ref=e50]:
+            - text: By signing up, you agree to our
+            - link "Terms of Service" [ref=e51] [cursor=pointer]:
+              - /url: /terms
+            - text: and
+            - link "Privacy Policy" [ref=e52] [cursor=pointer]:
+              - /url: /privacy
+        - button "Create account" [ref=e53] [cursor=pointer]
+      - paragraph [ref=e54]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e55] [cursor=pointer]:
+          - /url: /login
+    - generic [ref=e58]:
+      - heading "Join 800,000+ companies" [level=2] [ref=e59]
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - img [ref=e63]
+          - generic [ref=e68]:
+            - heading "Trusted by top teams" [level=3] [ref=e69]
+            - paragraph [ref=e70]: Used across startups to Fortune 500 companies
+        - generic [ref=e71]:
+          - img [ref=e73]
+          - generic [ref=e75]:
+            - heading "Enterprise-grade security" [level=3] [ref=e76]
+            - paragraph [ref=e77]: SOC 2 Type II, GDPR, and HIPAA compliant
+        - generic [ref=e78]:
+          - img [ref=e80]
+          - generic [ref=e82]:
+            - heading "Start in seconds" [level=3] [ref=e83]
+            - paragraph [ref=e84]: No credit card required, free forever plan
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - generic [ref=e87]: TC
+          - generic [ref=e88]:
+            - paragraph [ref=e89]: Tom Chen
+            - paragraph [ref=e90]: CEO, TechStartup
+        - paragraph [ref=e91]: "\"OpenMeet saved our team 15 hours per week. The AI summaries are incredibly accurate!\""
+  - alert [ref=e92]
+```

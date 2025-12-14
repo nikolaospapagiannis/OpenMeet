@@ -1,0 +1,28 @@
+# Enterprise pre-commit quality & security gates (Husky shim removed per v10 deprecation)
+set -e
+
+echo "[PRE-COMMIT] Running secret scan (gitleaks)..."
+if command -v gitleaks >/dev/null 2>&1; then
+  npm --prefix exai-guard/server run secrets:scan
+else
+  echo "[PRE-COMMIT][WARN] gitleaks binary not found in PATH. Skipping secret scan (temporary bypass)."
+  echo "[PRE-COMMIT][ACTION REQUIRED] Install gitleaks (e.g. manual download to tools/ and add to PATH) to re-enable enforcement."
+fi
+
+echo "[PRE-COMMIT] Running lint (no warnings) on staged server sources..."
+# Get staged JS/TS files under server/src
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '^exai-guard/server/src/.*\.[jt]s$' || true)
+if [ -n "$STAGED_FILES" ]; then
+  echo "$STAGED_FILES" | tr '\n' ' '
+  # Run eslint only on staged files to avoid legacy widescale violations blocking incremental hardening
+  npx --prefix exai-guard/server eslint --max-warnings=0 $STAGED_FILES
+else
+  echo "[PRE-COMMIT] No server src JS/TS files staged; skipping eslint."
+fi
+
+# (Optional future) Add fast unit subset or diff-based tests here.
+
+echo "[PRE-COMMIT] Running governance / custom quality checks..."
+node scripts/pre-commit-check.js
+
+echo "[PRE-COMMIT] All checks passed."

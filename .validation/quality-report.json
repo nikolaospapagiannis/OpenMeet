@@ -1,0 +1,2282 @@
+{
+  "startedAt": "2025-08-17T08:51:50.084Z",
+  "fileSizeViolations": [
+    {
+      "file": "exai-guard\\server\\src\\cache\\cacheManager.js",
+      "lines": 1014,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\index.js",
+      "lines": 1275,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\analyticsService.js",
+      "lines": 1288,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\deploymentService.js",
+      "lines": 1195,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\analyzers\\AntiPatternDetectionEngine.ts",
+      "lines": 1525,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\learning\\ContinuousLearningSystem.ts",
+      "lines": 1140,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godModeService.js",
+      "lines": 1163,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\jobWorkerService.js",
+      "lines": 1522,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\mcpService.old.js",
+      "lines": 2161,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\mfaService.js",
+      "lines": 1136,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\projectService.js",
+      "lines": 1218,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\securityMonitoringService.js",
+      "lines": 2372,
+      "limit": 1000
+    },
+    {
+      "file": "exai-guard\\server\\src\\working-server.js",
+      "lines": 1440,
+      "limit": 1000
+    }
+  ],
+  "complexityViolations": [
+    {
+      "file": "exai-guard\\server\\src\\adapters\\databaseAdapter.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\app.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\app.production.ts",
+      "complexity": 13,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\CacheAnalytics.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\cacheManager.js",
+      "complexity": 119,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\enhancedCacheManager.js",
+      "complexity": 71,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\index.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\interfaces.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\middleware\\httpCacheMiddleware.js",
+      "complexity": 55,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\providers\\enhancedRedisProvider.js",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\providers\\memoryProvider.js",
+      "complexity": 60,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\providers\\redisProvider.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\strategies\\defaultStrategy.js",
+      "complexity": 30,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\strategies\\tieredCachingStrategy.js",
+      "complexity": 54,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\utils\\databaseCache.js",
+      "complexity": 75,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\utils\\dbCacheWrapper.js",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\cache\\utils\\queryHelpers.js",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\auth.config.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\cache.config.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\configuration.service.js",
+      "complexity": 128,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\database.config.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\index.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\index.ts",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\config\\logging.config.ts",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\auth\\AuthController.ts",
+      "complexity": 98,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\auth\\DevAuthController.ts",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\base\\BaseController.ts",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\billingController.js",
+      "complexity": 47,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\chat\\ChatController.ts",
+      "complexity": 47,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\chatController.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\database\\DatabaseController.ts",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\databaseController.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\devAuthController.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\fileExportController.ts",
+      "complexity": 99,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\generation\\GenerationController.ts",
+      "complexity": 20,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\generation\\GenerationStatusController.ts",
+      "complexity": 70,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\generation\\GodModeController.ts",
+      "complexity": 127,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\generation\\__tests__\\GodModeController.test.ts",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\generationStatusController.js",
+      "complexity": 54,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\godModeController.js",
+      "complexity": 89,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\godModeController.ts",
+      "complexity": 45,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\integratedValidationController.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\job\\JobController.ts",
+      "complexity": 29,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\jobController.js",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\mcpController.js",
+      "complexity": 45,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\mfaController.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\organizationController.js",
+      "complexity": 38,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\permissionController.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\project\\ProjectController.ts",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\projectFileController.js",
+      "complexity": 51,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\projectGenerationController.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\rateLimitController.js",
+      "complexity": 74,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\rbacController-sqlite.js",
+      "complexity": 71,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\rbacController.js",
+      "complexity": 54,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\rbacControllerProduction.js",
+      "complexity": 40,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\roleController.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\securityMonitoringController.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\simpleOrganizationController.js",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\simpleTeamController.js",
+      "complexity": 111,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\teamController.js",
+      "complexity": 47,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\controllers\\validationController.js",
+      "complexity": 126,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\core\\DependencyInjectionContainer.ts",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\core\\interfaces.ts",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\core\\RedisDistributedLock.ts",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\core\\RedisStateManager.ts",
+      "complexity": 48,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\core\\StatelessBootstrapper.ts",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\automatedBackupService.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\checkpointRepository.js",
+      "complexity": 56,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\config\\index.js",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\config\\postgres.config.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\config\\sqlite.config.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\config.js",
+      "complexity": 15,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\connectionPool.js",
+      "complexity": 58,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\connectionPoolManager.js",
+      "complexity": 71,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\dbService.js",
+      "complexity": 116,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\enhancedDbService.js",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\EnhancedDbService.ts",
+      "complexity": 74,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\health\\migrationHealth.js",
+      "complexity": 15,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\healthMonitor.js",
+      "complexity": 76,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\highAvailability.js",
+      "complexity": 66,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\index.js",
+      "complexity": 15,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\IndexManager.ts",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\init-db.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\interfaces\\IDbService.ts",
+      "complexity": 8,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\jobQueueRepository.js",
+      "complexity": 52,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\jobRepository.js",
+      "complexity": 60,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\backupUtility.js",
+      "complexity": 97,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\dataMigration.js",
+      "complexity": 97,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\migrationController.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\migrationRunner.js",
+      "complexity": 111,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\poolMigration.js",
+      "complexity": 20,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\migration\\sqliteMigrationRunner.js",
+      "complexity": 115,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\MigrationFramework.ts",
+      "complexity": 82,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\models.js",
+      "complexity": 59,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\OptimisticLockingManager.ts",
+      "complexity": 45,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\pooledDbService.js",
+      "complexity": 45,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\pools\\postgresPoolFactory.js",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\pools\\sqlitePoolFactory.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\postgresqlMigration.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\projectAccessRepository.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\projectExportRepository.js",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\projectRepository.js",
+      "complexity": 71,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\projectVersionRepository.js",
+      "complexity": 38,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\QueryPerformanceMonitor.ts",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\readWriteSplitter.js",
+      "complexity": 69,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\BaseRepository.js",
+      "complexity": 127,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\BaseRepository.ts",
+      "complexity": 181,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\chatRepository.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\encryptionMetadataRepository.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\EncryptionMetadataRepository.ts",
+      "complexity": 54,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\index.js",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\organizationRepository.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\permissionRepository.js",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\PermissionRepository.ts",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\rateLimitRepository.js",
+      "complexity": 41,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\RateLimitRepository.ts",
+      "complexity": 123,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\roleRepository.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\RoleRepository.ts",
+      "complexity": 59,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\securityAlertRepository.js",
+      "complexity": 171,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\SecurityAlertRepository.ts",
+      "complexity": 136,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\securityEventRepository.js",
+      "complexity": 137,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\SecurityEventRepository.ts",
+      "complexity": 108,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\standardized\\jobRepository.js",
+      "complexity": 48,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\standardized\\projectRepository.js",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\standardized\\userRepository.js",
+      "complexity": 48,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\teamRepository.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\userRepository.js",
+      "complexity": 124,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\userRepository.real.js",
+      "complexity": 37,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositories\\UserRepository.ts",
+      "complexity": 115,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\repositoryFactory.js",
+      "complexity": 176,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\settingsRepository.js",
+      "complexity": 46,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\database\\TransactionManager.ts",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\docker-server-production.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\docker-server.js",
+      "complexity": 72,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\auth\\dtos\\AuthDto.ts",
+      "complexity": 8,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\auth\\dtos\\UserDto.ts",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\generation\\dtos\\GenerationDto.ts",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\job\\dtos\\JobDto.ts",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\job\\interfaces\\IJobService.ts",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\project\\dtos\\ProjectAccessDto.ts",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\project\\dtos\\ProjectDto.ts",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\domains\\project\\interfaces\\IProjectService.ts",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\health.ts",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\index-fixed.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\index-production.js",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\index.js",
+      "complexity": 161,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\index.production.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\index.ts",
+      "complexity": 114,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\main-server.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\metrics\\apmClient.js",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\metrics\\criticalPathMonitoring.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\metrics\\enhancedPrometheusClient.ts",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\metrics\\index.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\metrics\\prometheusClient.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\apiLoggingMiddleware.ts",
+      "complexity": 75,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\authMiddleware.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\authMiddleware.production.js",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\csrfMiddleware.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\csrfProtection.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\enhancedErrorHandler.js",
+      "complexity": 138,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\enhancedPiiRedactionMiddleware.js",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\enhancedRateLimit.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\errorHandler.js",
+      "complexity": 8,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\fileUploadValidationMiddleware.js",
+      "complexity": 115,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\globalErrorHandler.js",
+      "complexity": 13,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\inputValidationMiddleware.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\jwtAuth.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\organizationRbac.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\piiRedactionMiddleware.js",
+      "complexity": 54,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\rateLimit.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\rateLimitMiddleware.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\rbacMiddleware.js",
+      "complexity": 92,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\requestIdMiddleware.ts",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\routePermissionsEnforcer.js",
+      "complexity": 62,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\securityHeadersMiddleware.ts",
+      "complexity": 38,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\securityMiddleware.js",
+      "complexity": 69,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\sessionMiddleware.ts",
+      "complexity": 52,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\strictCspMiddleware.js",
+      "complexity": 97,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\strictInputValidation.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\validation.js",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\validators.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\xssProtection.js",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\middleware\\xssProtectionMiddleware.js",
+      "complexity": 58,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\minimal-bypass-server.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\prod-server.js",
+      "complexity": 38,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\production-server.js",
+      "complexity": 45,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\quick-start-server.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\errors.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\index.js",
+      "complexity": 20,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\metrics.js",
+      "complexity": 100,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\middleware\\rateLimiterMiddleware.js",
+      "complexity": 77,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\rateLimitConfigService.js",
+      "complexity": 119,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\stores\\baseStore.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\stores\\memoryStore.js",
+      "complexity": 50,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\stores\\redisStore.js",
+      "complexity": 67,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\adaptiveStrategy.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\baseStrategy.js",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\defaultStrategy.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\endpointStrategy.js",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\ipBasedStrategy.js",
+      "complexity": 75,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategies\\roleBasedStrategy.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\strategySelector.js",
+      "complexity": 46,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\rateLimit\\throttlingService.js",
+      "complexity": 29,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\adminRoutes.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\auth-ui.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\auth.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\auth.routes.js",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\authRoutes.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\billing.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\billingRoutes.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\cacheRoutes.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\claudeAuthRoutes.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\email.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\encryptionRoutes.js",
+      "complexity": 37,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\enhancedAuthRoutes.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\fileUploadRoutes.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\healthCheckRoutes.js",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\healthRoutes.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\index.js",
+      "complexity": 41,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\jobRoutes.js",
+      "complexity": 61,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\mcp-real.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\migrationRoutes.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\newAuthRoutes.js",
+      "complexity": 74,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\projectRoutes.js",
+      "complexity": 86,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\projects-real.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\rbac-sqlite.js",
+      "complexity": 46,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\rbac.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\simpleOrganizationRoutes.js",
+      "complexity": 20,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\routes\\webhookRoutes.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\server.production.ts",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\analyticsService.js",
+      "complexity": 100,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\applicationStateManager.ts",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\auditLogger.js",
+      "complexity": 93,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\authenticationService.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\authorizationService.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\authService.js",
+      "complexity": 40,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\bulkheadService.js",
+      "complexity": 58,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\centralizedValidationService.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\chatService.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\circuitBreakerService.ts",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\claudeOAuthManualService.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\claudeOAuthService.js",
+      "complexity": 53,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\claudeService.js",
+      "complexity": 99,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\codeQualityValidationService.js",
+      "complexity": 108,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\devAuthService.js",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\distributedJobService.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\emailService.js",
+      "complexity": 31,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\encryptionScopeMapper.js",
+      "complexity": 110,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\encryptionService.js",
+      "complexity": 145,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\enhancedMcpService.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\enhancedProjectService.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\evidenceBasedValidationService.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\fileExportService.js",
+      "complexity": 69,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\fileStorageService.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\blueprintService.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\deploymentService.js",
+      "complexity": 79,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\implementationService.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\orchestrator.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\resumableGenerationService.js",
+      "complexity": 76,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\scaffoldService.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\generation\\validationService.js",
+      "complexity": 86,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\analyzers\\AntiPatternDetectionEngine.ts",
+      "complexity": 152,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\analyzers\\DependencyGraphAnalyzer.ts",
+      "complexity": 85,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\GodModeOrchestrator.ts",
+      "complexity": 77,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\guardians\\PerformanceGuardian.ts",
+      "complexity": 44,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\handlers\\IntelligentErrorHandler.ts",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\intelligence\\PredictiveIntelligence.ts",
+      "complexity": 41,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\learning\\ContinuousLearningSystem.ts",
+      "complexity": 97,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\orchestration\\MultiRepositoryOrchestrator.ts",
+      "complexity": 48,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\prevention\\ArchitectureDriftPrevention.ts",
+      "complexity": 31,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\security\\SecurityFirstFramework.ts",
+      "complexity": 61,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godMode\\strategy\\QuantumImplementationStrategy.ts",
+      "complexity": 51,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\godModeService.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\gracefulDegradationService.js",
+      "complexity": 53,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\gracefulShutdown.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\healthCheckService.js",
+      "complexity": 50,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\healthCheckService.ts",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\inMemoryOrganizationService.js",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\inMemorySessionStore.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\integratedValidationService.js",
+      "complexity": 128,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\jobQueueService.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\jobWorkerService.js",
+      "complexity": 110,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\mcpService.js",
+      "complexity": 11,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\mcpService.old.js",
+      "complexity": 214,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\messageHandlers\\projectEventHandler.js",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\messageQueueService.js",
+      "complexity": 86,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\mfaService.js",
+      "complexity": 110,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\notificationService.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\oauthService.js",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\organizationService.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\processors\\generationProcessor.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\productionAPMService.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\projectService.js",
+      "complexity": 89,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\domainResult.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\fileAnalysis.js",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\languageDetection.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\pipeline.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\recommendations.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\scoring.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\quality\\thresholds.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\realAuthService.js",
+      "complexity": 96,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\redisConnectionService.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\retryService.ts",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\runtimeExecutionService.js",
+      "complexity": 92,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\runtimeExecutionService.real.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\searchService.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\secretsService.js",
+      "complexity": 61,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\securityMonitoringService.js",
+      "complexity": 304,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\securityValidator.js",
+      "complexity": 84,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\serverManager.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\serviceDiscovery.js",
+      "complexity": 78,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\session\\RedisSessionService.ts",
+      "complexity": 50,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\sessionService.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\storageService.js",
+      "complexity": 119,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\stripeService.js",
+      "complexity": 20,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\structuredLoggingService.js",
+      "complexity": 52,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\userFriendlyErrorService.js",
+      "complexity": 61,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validation\\EvidenceCollector.js",
+      "complexity": 48,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validation\\QualityGateValidator.js",
+      "complexity": 64,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validation\\ValidationOrchestrator.js",
+      "complexity": 58,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validation\\ValidationService.ts",
+      "complexity": 31,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validationFramework.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\validationService.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\vscodeLMProvider.js",
+      "complexity": 56,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\wrapperCoverageAnalyzer.js",
+      "complexity": 107,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\services\\__mocks__\\sessionService.js",
+      "complexity": 16,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\shared\\container\\DIContainer.ts",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\shared\\events\\EventBus.ts",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\shared\\validation\\DomainBoundaryValidator.ts",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\simple-godmode-server.js",
+      "complexity": 50,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\standalone-godmode.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\trace-startup.js",
+      "complexity": 8,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\AppError.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\circuitBreaker.js",
+      "complexity": 58,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\clientLogHandler.js",
+      "complexity": 13,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\debug.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\diagnostics.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\env.js",
+      "complexity": 40,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\errorClasses.js",
+      "complexity": 92,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\errorFactory.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\errors.ts",
+      "complexity": 46,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\errorUtils.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\language-analyzers.js",
+      "complexity": 46,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\logger.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\loggerAdapter.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\mcpErrors.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\metrics.js",
+      "complexity": 72,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\piiRedactionUtils.ts",
+      "complexity": 157,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\piiUtils.js",
+      "complexity": 49,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\retryUtils.js",
+      "complexity": 47,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\validationUtils.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\utils\\xssUtils.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\validation\\evidenceBasedValidator.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\validation\\qualityGates.js",
+      "complexity": 73,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\validations\\securitySchemas.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\server\\src\\working-server.js",
+      "complexity": 150,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\App.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\admin\\UserManagementDashboard.js",
+      "complexity": 31,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\AdminDashboard\\BackupDashboard.js",
+      "complexity": 61,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\AdminDashboard\\BackupDashboard.real.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\AdminDashboard\\DatabaseManagement.js",
+      "complexity": 76,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\AdminDashboard\\MigrationDashboard.tsx",
+      "complexity": 63,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\AdminDashboard\\ProjectStatusDashboard.js",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Billing\\BillingDashboard.js",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Billing\\CheckoutForm.js",
+      "complexity": 15,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\CodeEditor\\CodeEditor.js",
+      "complexity": 164,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\CodeEditor\\lintingUtils.js",
+      "complexity": 44,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\CodeQuality\\AutomatedImprovement.jsx",
+      "complexity": 34,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\CodeQuality\\ImprovementRecommendations.jsx",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\Alert.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\ProgressBar.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\ProjectScore.jsx",
+      "complexity": 30,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\QualityBadge.jsx",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\SplitPane.jsx",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\Table.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\common\\Tree.jsx",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\EncryptedField.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\EncryptionSettings.js",
+      "complexity": 102,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\EncryptionStatusIndicator.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\EncryptionStatusIndicator.test.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\GitHubBadges.jsx",
+      "complexity": 39,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\GitHubButtons.jsx",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Navbar.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Organization\\OrganizationSwitcher.js",
+      "complexity": 52,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\ProjectExplorer\\EnhancedProjectExplorer.jsx",
+      "complexity": 127,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\ProjectExplorer\\ProjectExplorer.js",
+      "complexity": 81,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\ProjectSharing\\ProjectExportDialog.jsx",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\ProjectSharing\\ProjectSharingDialog.jsx",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\ProtectedRoute.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\QualityGateVisualization.js",
+      "complexity": 74,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\RouteDebugger.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\SensitiveDataViewer.js",
+      "complexity": 31,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\SensitiveDataViewer.test.js",
+      "complexity": 10,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Subscription\\PricingPlans.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\Subscription\\TokenPurchase.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\components\\UserRoleManagement.jsx",
+      "complexity": 15,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\context\\AuthContext.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\context\\OrganizationContext.js",
+      "complexity": 51,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\index.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\AdminDashboard.jsx",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\BillingDashboard.js",
+      "complexity": 14,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ChatInterface.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\CodeQualityAnalysis.js",
+      "complexity": 57,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\CodeQualityImprovement.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\Dashboard.js",
+      "complexity": 24,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\GeneratedResult.js",
+      "complexity": 50,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\GenerationStatus.js",
+      "complexity": 42,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\GodModeDashboard.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\IntegratedValidation.js",
+      "complexity": 138,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\KanbanBoard.js",
+      "complexity": 18,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\Login.js",
+      "complexity": 12,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\MFASettings.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\MFASetup.js",
+      "complexity": 28,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\OrganizationDashboard.js",
+      "complexity": 25,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ProjectDetail.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ProjectEditorPage.jsx",
+      "complexity": 76,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ProjectGenerator.js",
+      "complexity": 87,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ProjectList.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\RateLimitDashboard.js",
+      "complexity": 44,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\Register.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\ResumableGenerationDashboard.js",
+      "complexity": 36,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\SecurityMonitoringDashboard.js",
+      "complexity": 35,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\TeamManagement.js",
+      "complexity": 43,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\TemplateManager.js",
+      "complexity": 32,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\UserManagement.js",
+      "complexity": 23,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\pages\\WorkflowBuilder.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\services\\api.js",
+      "complexity": 33,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\AdminDashboard.test.js",
+      "complexity": 9,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e\\setup.js",
+      "complexity": 22,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e\\specs\\basic-workflow.spec.js",
+      "complexity": 19,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e\\specs\\project-sharing-workflow.spec.js",
+      "complexity": 6,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e\\specs\\security-monitoring-workflow.spec.js",
+      "complexity": 17,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e-disabled\\code-quality.test.js",
+      "complexity": 7,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\e2e-disabled\\projects.test.js",
+      "complexity": 8,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\verification\\verify-screenshot-evidence.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\tests\\verification\\verifyDatabaseManagement.js",
+      "complexity": 27,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\utils\\debug.js",
+      "complexity": 21,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\utils\\logger.js",
+      "complexity": 26,
+      "limit": 5
+    },
+    {
+      "file": "exai-guard\\client\\src\\utils\\routerDebug.js",
+      "complexity": 11,
+      "limit": 5
+    }
+  ],
+  "secretFindings": [],
+  "summary": {
+    "filesChecked": 530,
+    "filesOverLimit": 13,
+    "complexityOverLimit": 439,
+    "secretsDetected": 0,
+    "violationScanner": {
+      "total": 48,
+      "critical": 0,
+      "major": 47,
+      "minor": 1
+    }
+  },
+  "notes": [],
+  "finishedAt": "2025-08-17T08:51:50.726Z"
+}

@@ -1,0 +1,226 @@
+LIVE TRANSCRIPTION PAGE - FILE STRUCTURE
+========================================
+
+apps/web/src/
+├── app/
+│   └── (dashboard)/
+│       └── live/
+│           └── [sessionId]/
+│               └── page.tsx ..................... Main live session page (13K)
+│
+├── components/
+│   └── live/
+│       ├── LiveTranscriptPanel.tsx ............. Auto-scroll transcript (11K) ✅
+│       ├── LiveControls.tsx .................... Session controls (11K) ✅
+│       ├── LiveBookmarkButton.tsx .............. Bookmark creation (17K) ✅
+│       ├── ParticipantsList.tsx ................ Participants sidebar (11K) ✅
+│       ├── index.ts ............................ Component exports ✅
+│       │
+│       └── (existing files)
+│           ├── LiveCaptionsOverlay.tsx
+│           ├── LiveHighlightsPanel.tsx
+│           ├── SentimentTimeline.tsx
+│           └── ...
+│
+├── hooks/
+│   ├── useLiveTranscription.ts ................. WebSocket hook (12K) ✅
+│   └── (existing hooks)
+│       ├── useLiveCaptions.ts
+│       ├── useLiveSentiment.ts
+│       └── ...
+│
+└── services/
+    └── websocket.ts ............................ Socket.io service (existing)
+
+
+apps/api/src/
+├── routes/
+│   ├── live.ts ................................. Live session API (existing)
+│   └── live-features.ts ........................ Live features API (existing)
+│
+└── index.ts .................................... Route mounting (existing)
+
+
+DATABASE SCHEMA (Prisma)
+========================
+✓ LiveSession
+✓ LiveTranscriptSegment
+✓ LiveBookmark
+✓ LiveInsight
+✓ LiveReaction
+
+
+WEBSOCKET EVENTS
+================
+Incoming (Server → Client):
+  → transcript:segment ........ New transcript data
+  → user:joined ............... Participant joined
+  → user:left ................. Participant left
+  → transcript:speaker ........ Speaker change
+  → meeting:update ............ Session status
+
+Outgoing (Client → Server):
+  ← live:join ................. Join session room
+  ← live:leave ................ Leave session room
+  ← bookmark:create ........... Create bookmark
+  ← session:status ............ Update session status
+
+
+API ENDPOINTS
+=============
+POST   /api/live/sessions ................... Create session
+GET    /api/live/sessions/:id ............... Get session
+PATCH  /api/live/sessions/:id/status ....... Update status
+POST   /api/live/:id/bookmarks .............. Create bookmark
+GET    /api/live/:id/bookmarks .............. List bookmarks
+GET    /api/live/:id/transcripts ............ List transcripts
+GET    /api/live/:id/insights ............... Get AI insights
+
+
+USER FLOW
+=========
+1. User navigates to /live/{sessionId}
+2. Page fetches session data via API
+3. Hook connects to WebSocket
+4. Server sends live transcript segments
+5. Components update in real-time
+6. User can:
+   - View live transcript with auto-scroll
+   - See participants and speaking status
+   - Create bookmarks (press 'B' key)
+   - Pause/Resume/End session
+   - Share session link
+7. All actions persist to database
+8. Other viewers see updates via WebSocket
+
+
+COMPONENT HIERARCHY
+===================
+LiveSessionPage
+├── Header
+│   ├── Back Button
+│   ├── Connection Status
+│   ├── Session Title
+│   ├── LiveControls
+│   │   ├── Status Indicator
+│   │   ├── Pause/Resume Button
+│   │   ├── Share Button (+ Dialog)
+│   │   ├── Settings Button
+│   │   └── End Button (+ Confirmation)
+│   └── LiveBookmarkButton
+│       ├── Create Button (with 'B' shortcut)
+│       ├── Recent Bookmarks Panel
+│       └── Creation Dialog
+│
+└── Main Content (Grid)
+    ├── Left Column (2/3)
+    │   └── LiveTranscriptPanel
+    │       ├── Search Bar
+    │       ├── Transcript List
+    │       │   ├── Final Segments
+    │       │   └── Interim Segment
+    │       ├── Scroll Indicator
+    │       └── Stats Footer
+    │
+    └── Right Column (1/3)
+        ├── ParticipantsList
+        │   ├── Header
+        │   ├── Sort Controls
+        │   ├── Participant Cards
+        │   │   ├── Avatar
+        │   │   ├── Name & Email
+        │   │   ├── Speaking Indicator
+        │   │   ├── Mute Status
+        │   │   └── Talk Time Bar
+        │   └── Total Stats
+        │
+        ├── Session Info Card
+        │   ├── Status
+        │   ├── Language
+        │   ├── Segment Count
+        │   └── Bookmark Count
+        │
+        └── Help Card
+            └── Keyboard Shortcuts
+
+
+REAL-TIME DATA FLOW
+===================
+WebSocket Server
+      ↓
+WebSocketService.socket.on('transcript:segment')
+      ↓
+useLiveTranscription.handleTranscriptSegment()
+      ↓
+setTranscripts(prev => [...prev, segment])
+      ↓
+LiveTranscriptPanel re-renders
+      ↓
+User sees new segment with animation
+
+
+FILE SIZES
+==========
+✓ page.tsx ........................ 13K
+✓ LiveTranscriptPanel.tsx ......... 11K
+✓ LiveControls.tsx ................ 11K
+✓ LiveBookmarkButton.tsx .......... 17K
+✓ ParticipantsList.tsx ............ 11K
+✓ useLiveTranscription.ts ......... 12K
+✓ globals.css (animations added) ... +40 lines
+
+TOTAL NEW CODE: ~75K (75,000 bytes)
+
+
+VERIFICATION COMMANDS
+=====================
+# Check all files exist
+ls -lh apps/web/src/app/\(dashboard\)/live/[sessionId]/page.tsx
+ls -lh apps/web/src/components/live/Live*.tsx
+ls -lh apps/web/src/components/live/ParticipantsList.tsx
+ls -lh apps/web/src/hooks/useLiveTranscription.ts
+
+# Check TypeScript compilation (should have no errors in new files)
+cd apps/web && pnpm tsc --noEmit
+
+# Start development
+cd apps/api && pnpm dev  # Terminal 1
+cd apps/web && pnpm dev  # Terminal 2
+
+# Access page
+open http://localhost:3000/live/{sessionId}
+
+
+FEATURES IMPLEMENTED
+====================
+✅ Real-time WebSocket connection
+✅ Live transcript display
+✅ Auto-scroll with manual override
+✅ Participant tracking
+✅ Speaking indicators
+✅ Talk time tracking
+✅ Bookmark creation (keyboard shortcut: B)
+✅ Session controls (pause/resume/end)
+✅ Share session link
+✅ Search transcript
+✅ Speaker color-coding
+✅ Timestamp display
+✅ Confidence indicators
+✅ Connection status
+✅ Error handling
+✅ Loading states
+✅ Dark mode
+✅ Mobile responsive
+✅ Accessibility (ARIA, keyboard nav)
+✅ TypeScript type safety
+✅ Database persistence
+✅ API integration
+
+
+NO MOCKS, NO FAKES
+==================
+Every feature connects to:
+  ✓ Real WebSocket service (Socket.io)
+  ✓ Real API endpoints (Express)
+  ✓ Real database (PostgreSQL via Prisma)
+  ✓ Real authentication (JWT)

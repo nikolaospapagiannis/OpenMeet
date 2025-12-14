@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - alert [ref=e2]
+  - generic [ref=e3]:
+    - generic [ref=e5]:
+      - link "OpenMeet" [ref=e7] [cursor=pointer]:
+        - /url: /
+      - heading "Welcome back" [level=1] [ref=e8]
+      - paragraph [ref=e9]: Sign in to your account to continue
+      - button "Sign in with Google" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - text: Sign in with Google
+      - button "Sign in with Microsoft" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - text: Sign in with Microsoft
+      - generic [ref=e27]: Or continue with email
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]: Work email
+          - textbox "Work email" [ref=e31]:
+            - /placeholder: name@company.com
+        - generic [ref=e32]:
+          - generic [ref=e33]: Password
+          - textbox "Password" [ref=e34]:
+            - /placeholder: Enter your password
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - checkbox "Remember me" [ref=e37]
+            - text: Remember me
+          - link "Forgot password?" [ref=e38] [cursor=pointer]:
+            - /url: /forgot-password
+        - button "Sign in" [ref=e39] [cursor=pointer]
+      - paragraph [ref=e40]:
+        - text: Don't have an account?
+        - link "Sign up for free" [ref=e41] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - img [ref=e46]
+        - img [ref=e48]
+        - img [ref=e50]
+        - img [ref=e52]
+        - img [ref=e54]
+      - blockquote [ref=e56]: "\"OpenMeet has completely transformed how we handle meetings. The AI summaries are incredibly accurate, and we save hours every week.\""
+      - generic [ref=e57]:
+        - paragraph [ref=e58]: Sarah Chen
+        - paragraph [ref=e59]: VP of Sales, TechCorp
+```

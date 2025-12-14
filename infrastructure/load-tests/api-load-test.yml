@@ -1,0 +1,244 @@
+# Artillery Load Test Configuration - Main API Test Suite
+# Tests all critical API endpoints with realistic traffic patterns
+
+config:
+  target: "http://localhost:4000"
+  phases:
+    # Warm-up phase
+    - duration: 60
+      arrivalRate: 10
+      name: "Warm-up"
+    # Ramp-up to peak load
+    - duration: 120
+      arrivalRate: 10
+      rampTo: 100
+      name: "Ramp-up"
+    # Sustained peak load
+    - duration: 300
+      arrivalRate: 100
+      name: "Sustained peak (100 RPS)"
+    # Stress test - 5000 req/sec sustained
+    - duration: 180
+      arrivalRate: 500
+      name: "High load (500 RPS)"
+    # Cool-down
+    - duration: 60
+      arrivalRate: 50
+      name: "Cool-down"
+
+  # Performance SLA thresholds
+  ensure:
+    maxErrorRate: 1 # Max 1% error rate
+    p95: 200 # 95th percentile response time < 200ms
+    p99: 500 # 99th percentile response time < 500ms
+
+  # Plugins for enhanced reporting
+  plugins:
+    metrics-by-endpoint:
+      # Track metrics per endpoint
+      stripQueryString: true
+    expect: {}
+
+  # Environment variables
+  variables:
+    apiUrl: "http://localhost:4000"
+
+  # HTTP defaults
+  http:
+    timeout: 10
+
+  # Processor for complex logic
+  processor: "./processors/auth-processor.js"
+
+# Test scenarios - these run concurrently
+scenarios:
+  - name: "Health Check Flow"
+    weight: 5
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: status
+          capture:
+            - json: "$.timestamp"
+              as: "healthTimestamp"
+
+  - name: "User Authentication Flow"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "loadtest-{{ $randomString() }}@example.com"
+            password: "TestPassword123!"
+          expect:
+            - statusCode: [200, 401] # Both valid for test
+          capture:
+            - json: "$.token"
+              as: "authToken"
+
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Meeting List and Search"
+    weight: 30
+    flow:
+      # Login first
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      # Get meeting list
+      - get:
+          url: "/api/meetings?page=1&limit=20"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+          capture:
+            - json: "$.meetings[0].id"
+              as: "meetingId"
+
+      # Search meetings
+      - get:
+          url: "/api/meetings/search?q=test&limit=10"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+      # Get specific meeting
+      - get:
+          url: "/api/meetings/{{ meetingId }}"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401, 404]
+
+  - name: "Transcription Operations"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/transcriptions?page=1&limit=10"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+      - get:
+          url: "/api/transcriptions/search?q=important"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Analytics Dashboard"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/analytics/dashboard"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+      - get:
+          url: "/api/analytics/meetings/trends?period=30d"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Organization Operations"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/organizations/current"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Integration Status Checks"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/integrations/list"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Real-time Features"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/live/status"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+      - get:
+          url: "/api/live-features/active-meetings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]

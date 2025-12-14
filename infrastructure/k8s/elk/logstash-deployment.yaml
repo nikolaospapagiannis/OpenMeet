@@ -1,0 +1,164 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: production
+  labels:
+    app: logstash
+    component: elk
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: logstash
+      component: elk
+  template:
+    metadata:
+      labels:
+        app: logstash
+        component: elk
+    spec:
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:8.11.3
+        ports:
+        - containerPort: 5044
+          name: beats
+          protocol: TCP
+        - containerPort: 5000
+          name: tcp
+          protocol: TCP
+        - containerPort: 5001
+          name: nginx
+          protocol: TCP
+        - containerPort: 5002
+          name: audit
+          protocol: TCP
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 9600
+          name: monitoring
+          protocol: TCP
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "2000m"
+            memory: "3Gi"
+        env:
+        - name: LS_JAVA_OPTS
+          value: "-Xms1g -Xmx1g"
+        - name: ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elasticsearch-credentials
+              key: password
+        - name: ELASTICSEARCH_USERNAME
+          value: "elastic"
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch:9200"
+        volumeMounts:
+        - name: config
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+          readOnly: true
+        - name: config
+          mountPath: /usr/share/logstash/config/pipelines.yml
+          subPath: pipelines.yml
+          readOnly: true
+        - name: pipeline
+          mountPath: /usr/share/logstash/pipeline/beats.conf
+          subPath: beats.conf
+          readOnly: true
+        - name: pipeline
+          mountPath: /usr/share/logstash/pipeline/api-logs.conf
+          subPath: api-logs.conf
+          readOnly: true
+        - name: pipeline
+          mountPath: /usr/share/logstash/pipeline/nginx-logs.conf
+          subPath: nginx-logs.conf
+          readOnly: true
+        - name: pipeline
+          mountPath: /usr/share/logstash/pipeline/audit-logs.conf
+          subPath: audit-logs.conf
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9600
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+      volumes:
+      - name: config
+        configMap:
+          name: logstash-config
+          items:
+          - key: logstash.yml
+            path: logstash.yml
+          - key: pipelines.yml
+            path: pipelines.yml
+      - name: pipeline
+        configMap:
+          name: logstash-config
+          items:
+          - key: beats.conf
+            path: beats.conf
+          - key: api-logs.conf
+            path: api-logs.conf
+          - key: nginx-logs.conf
+            path: nginx-logs.conf
+          - key: audit-logs.conf
+            path: audit-logs.conf
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: production
+  labels:
+    app: logstash
+    component: elk
+spec:
+  type: ClusterIP
+  selector:
+    app: logstash
+    component: elk
+  ports:
+  - name: beats
+    port: 5044
+    targetPort: 5044
+    protocol: TCP
+  - name: tcp
+    port: 5000
+    targetPort: 5000
+    protocol: TCP
+  - name: nginx
+    port: 5001
+    targetPort: 5001
+    protocol: TCP
+  - name: audit
+    port: 5002
+    targetPort: 5002
+    protocol: TCP
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: monitoring
+    port: 9600
+    targetPort: 9600
+    protocol: TCP

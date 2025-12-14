@@ -1,0 +1,386 @@
+# Artillery Load Test Configuration - GraphQL API
+# Target: GraphQL endpoint performance testing
+#
+# Run with: artillery run graphql-load-test.yml
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm-up
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up"
+
+    # Ramp-up
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 30
+      name: "Ramp-up"
+
+    # Sustained load
+    - duration: 180
+      arrivalRate: 30
+      name: "Sustained load"
+
+    # Peak
+    - duration: 60
+      arrivalRate: 60
+      name: "Peak load"
+
+  ensure:
+    maxErrorRate: 1
+    p95: 800
+    p99: 1500
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+scenarios:
+  # Scenario 1: Query-heavy operations
+  - name: "GraphQL Queries"
+    weight: 60
+    flow:
+      # Authentication first
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+
+      # Query: Health check
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query {
+                health {
+                  status
+                  timestamp
+                  version
+                }
+              }
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+      # Query: Get current user
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query {
+                me {
+                  id
+                  email
+                  firstName
+                  lastName
+                  role
+                }
+              }
+          expect:
+            - statusCode: 200
+
+      # Query: Get meetings with filtering
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query GetMeetings($page: Int, $limit: Int, $status: MeetingStatus) {
+                meetings(page: $page, limit: $limit, status: $status) {
+                  data {
+                    id
+                    title
+                    description
+                    status
+                    platform
+                    scheduledAt
+                    durationSeconds
+                    recordingUrl
+                    user {
+                      id
+                      email
+                      firstName
+                      lastName
+                    }
+                    participants {
+                      email
+                      name
+                      joinedAt
+                    }
+                  }
+                  total
+                  page
+                  totalPages
+                }
+              }
+            variables:
+              page: 1
+              limit: 20
+              status: "completed"
+          expect:
+            - statusCode: 200
+
+      # Query: Dashboard analytics
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query GetDashboard($period: AnalyticsPeriod) {
+                dashboardAnalytics(period: $period) {
+                  period {
+                    start
+                    end
+                  }
+                  overview {
+                    totalMeetings
+                    completedMeetings
+                    totalDurationMinutes
+                    totalTranscripts
+                    totalSummaries
+                    totalComments
+                    totalSoundbites
+                    activeUsers
+                  }
+                  meetingsByDay {
+                    date
+                    count
+                  }
+                  topParticipants {
+                    email
+                    name
+                    meetingCount
+                    totalTalkTimeMinutes
+                  }
+                }
+              }
+            variables:
+              period: "thirty_days"
+          expect:
+            - statusCode: 200
+
+      # Think time
+      - think: 1
+
+  # Scenario 2: Mutation operations
+  - name: "GraphQL Mutations"
+    weight: 30
+    flow:
+      # Authentication
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+
+      # Mutation: Create meeting
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              mutation CreateMeeting($input: CreateMeetingInput!) {
+                createMeeting(input: $input) {
+                  id
+                  title
+                  description
+                  status
+                  platform
+                  scheduledAt
+                }
+              }
+            variables:
+              input:
+                title: "GraphQL Load Test Meeting {{ $randomNumber() }}"
+                description: "Created via GraphQL load test"
+                platform: "zoom"
+                scheduledAt: "{{ $now() }}"
+                participants:
+                  - email: "participant@example.com"
+                    name: "Test Participant"
+          capture:
+            - json: "$.data.createMeeting.id"
+              as: "meetingId"
+          expect:
+            - statusCode: 200
+
+      # Mutation: Update meeting
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              mutation UpdateMeeting($id: ID!, $input: UpdateMeetingInput!) {
+                updateMeeting(id: $id, input: $input) {
+                  id
+                  title
+                  status
+                }
+              }
+            variables:
+              id: "{{ meetingId }}"
+              input:
+                title: "Updated via GraphQL"
+                status: "in_progress"
+          expect:
+            - statusCode: 200
+
+      # Mutation: Start meeting
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              mutation StartMeeting($id: ID!) {
+                startMeeting(id: $id) {
+                  id
+                  status
+                  startedAt
+                }
+              }
+            variables:
+              id: "{{ meetingId }}"
+          expect:
+            - statusCode: 200
+
+      # Mutation: Complete meeting
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              mutation CompleteMeeting($id: ID!) {
+                completeMeeting(id: $id) {
+                  id
+                  status
+                  completedAt
+                  durationSeconds
+                }
+              }
+            variables:
+              id: "{{ meetingId }}"
+          expect:
+            - statusCode: 200
+
+  # Scenario 3: Complex nested queries
+  - name: "Complex Queries with Nested Data"
+    weight: 10
+    flow:
+      # Authentication
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "authToken"
+
+      # Complex query with multiple levels
+      - post:
+          url: "/graphql"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+            Content-Type: "application/json"
+          json:
+            query: |
+              query ComplexMeetingData($id: ID!) {
+                meeting(id: $id) {
+                  id
+                  title
+                  description
+                  status
+                  platform
+                  scheduledAt
+                  startedAt
+                  completedAt
+                  durationSeconds
+                  recordingUrl
+                  user {
+                    id
+                    email
+                    firstName
+                    lastName
+                    role
+                  }
+                  workspace {
+                    id
+                    name
+                    slug
+                  }
+                  participants {
+                    email
+                    name
+                    joinedAt
+                    leftAt
+                    talkTimeSeconds
+                  }
+                  transcript {
+                    id
+                    wordCount
+                    confidenceScore
+                    language
+                    isFinal
+                    createdAt
+                  }
+                  summary {
+                    id
+                    summary
+                    keyPoints
+                    actionItems {
+                      task
+                      owner
+                      deadline
+                    }
+                    topics
+                  }
+                  comments {
+                    id
+                    content
+                    timestamp
+                    isResolved
+                    user {
+                      email
+                      firstName
+                      lastName
+                    }
+                  }
+                  soundbites {
+                    id
+                    title
+                    startTime
+                    endTime
+                    transcript
+                  }
+                }
+              }
+            variables:
+              id: "test-meeting-id"
+          expect:
+            - statusCode: 200

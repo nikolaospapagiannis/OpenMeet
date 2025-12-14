@@ -1,0 +1,488 @@
+/**
+ * Frontend Performance Optimization Utilities
+ * Code splitting, lazy loading, prefetching, and performance monitoring
+ */
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+
+/**
+ * Virtual Scrolling Hook
+ * Efficiently renders large lists by only rendering visible items
+ */
+export interface VirtualScrollOptions {
+  itemHeight: number; // Height of each item in pixels
+  containerHeight: number; // Height of the scroll container
+  overscan?: number; // Number of items to render outside viewport
+  totalItems: number; // Total number of items
+}
+
+export function useVirtualScroll<T>(
+  items: T[],
+  options: VirtualScrollOptions
+) {
+  const { itemHeight, containerHeight, overscan = 3, totalItems } = options;
+
+  const [scrollTop, setScrollTop] = useState(0);
+
+  // Calculate visible range
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const endIndex = Math.min(
+    totalItems,
+    Math.ceil((scrollTop + containerHeight) / itemHeight) + overscan
+  );
+
+  // Get visible items
+  const visibleItems = items.slice(startIndex, endIndex);
+
+  // Calculate offset for positioning
+  const offsetY = startIndex * itemHeight;
+
+  // Total height of the scrollable area
+  const totalHeight = totalItems * itemHeight;
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  }, []);
+
+  return {
+    visibleItems,
+    offsetY,
+    totalHeight,
+    startIndex,
+    endIndex,
+    handleScroll,
+  };
+}
+
+/**
+ * Intersection Observer Hook
+ * Lazy load images and components when they enter viewport
+ */
+export function useIntersectionObserver(
+  options: IntersectionObserverInit = {}
+): [(node: Element | null) => void, IntersectionObserverEntry | null] {
+  const [entry, setEntry] = useState<IntersectionObserverEntry | null>(null);
+  const [node, setNode] = useState<Element | null>(null);
+  const observer = useRef<IntersectionObserver | null>(null);
+
+  useEffect(() => {
+    // Disconnect previous observer
+    if (observer.current) {
+      observer.current.disconnect();
+    }
+
+    // Create new observer
+    observer.current = new IntersectionObserver(([entry]) => {
+      setEntry(entry);
+    }, options);
+
+    // Observe the node
+    if (node) {
+      observer.current.observe(node);
+    }
+
+    // Cleanup
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [node, options]);
+
+  return [setNode, entry];
+}
+
+/**
+ * Lazy Image Component Hook
+ * Load images only when they're visible
+ */
+export function useLazyImage(src: string, placeholder = '/placeholder.png') {
+  const [imageSrc, setImageSrc] = useState(placeholder);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [ref, entry] = useIntersectionObserver({
+    threshold: 0.1,
+    rootMargin: '50px', // Start loading 50px before entering viewport
+  });
+
+  useEffect(() => {
+    if (entry?.isIntersecting && !isLoaded) {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        setImageSrc(src);
+        setIsLoaded(true);
+      };
+    }
+  }, [entry, src, isLoaded]);
+
+  return { ref, imageSrc, isLoaded };
+}
+
+/**
+ * Prefetch data hook
+ * Prefetch data for routes before navigation
+ */
+export function usePrefetch<T>(
+  fetcher: () => Promise<T>,
+  shouldPrefetch = true
+) {
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [prefetchedData, setPrefetchedData] = useState<T | null>(null);
+  const prefetchedRef = useRef(false);
+
+  const prefetch = useCallback(async () => {
+    if (prefetchedRef.current || !shouldPrefetch) return;
+
+    setIsPrefetching(true);
+    prefetchedRef.current = true;
+
+    try {
+      const data = await fetcher();
+      setPrefetchedData(data);
+    } catch (error) {
+      console.error('Prefetch error:', error);
+    } finally {
+      setIsPrefetching(false);
+    }
+  }, [fetcher, shouldPrefetch]);
+
+  return { prefetch, isPrefetching, prefetchedData };
+}
+
+/**
+ * Debounced search hook
+ * Reduces API calls during typing
+ */
+export function useDebouncedValue<T>(value: T, delay = 300): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+/**
+ * Performance monitoring hook
+ * Track component render times and performance metrics
+ */
+export function usePerformanceMonitor(componentName: string) {
+  const renderCountRef = useRef(0);
+  const startTimeRef = useRef(performance.now());
+
+  useEffect(() => {
+    renderCountRef.current++;
+
+    const renderTime = performance.now() - startTimeRef.current;
+
+    if (renderTime > 16) {
+      // Slower than 60fps
+      console.warn(`${componentName} slow render: ${renderTime.toFixed(2)}ms`);
+    }
+
+    // Log to analytics (if available)
+    if (window.analytics) {
+      window.analytics.track('Component Render', {
+        component: componentName,
+        renderTime,
+        renderCount: renderCountRef.current,
+      });
+    }
+
+    startTimeRef.current = performance.now();
+  });
+
+  return {
+    renderCount: renderCountRef.current,
+  };
+}
+
+/**
+ * Web Vitals monitoring
+ * Track Core Web Vitals for performance optimization
+ */
+export function initWebVitals() {
+  if (typeof window === 'undefined') return;
+
+  // LCP - Largest Contentful Paint
+  const observer = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      console.log('LCP:', entry);
+
+      if (window.analytics) {
+        window.analytics.track('Web Vital - LCP', {
+          value: (entry as any).renderTime || (entry as any).loadTime,
+          metric: 'LCP',
+        });
+      }
+    }
+  });
+
+  observer.observe({ entryTypes: ['largest-contentful-paint'] });
+
+  // FID - First Input Delay
+  const fidObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      console.log('FID:', entry);
+
+      if (window.analytics) {
+        window.analytics.track('Web Vital - FID', {
+          value: (entry as any).processingStart - (entry as any).startTime,
+          metric: 'FID',
+        });
+      }
+    }
+  });
+
+  fidObserver.observe({ entryTypes: ['first-input'] });
+
+  // CLS - Cumulative Layout Shift
+  let clsScore = 0;
+  const clsObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      if (!(entry as any).hadRecentInput) {
+        clsScore += (entry as any).value;
+      }
+    }
+
+    console.log('CLS:', clsScore);
+
+    if (window.analytics) {
+      window.analytics.track('Web Vital - CLS', {
+        value: clsScore,
+        metric: 'CLS',
+      });
+    }
+  });
+
+  clsObserver.observe({ entryTypes: ['layout-shift'] });
+}
+
+/**
+ * Bundle size analyzer
+ * Helps identify large dependencies
+ */
+export function logBundleSize() {
+  if (typeof window === 'undefined') return;
+
+  // @ts-ignore
+  if (process.env.NODE_ENV === 'development' && window.__NEXT_DATA__) {
+    const scripts = Array.from(document.querySelectorAll('script[src]'));
+    const totalSize = scripts.reduce((acc, script) => {
+      return acc + (script.textContent?.length || 0);
+    }, 0);
+
+    console.log('Estimated bundle size:', (totalSize / 1024).toFixed(2), 'KB');
+  }
+}
+
+/**
+ * Resource hints utilities
+ * Add dns-prefetch, preconnect, prefetch, and preload
+ */
+export function addResourceHint(
+  rel: 'dns-prefetch' | 'preconnect' | 'prefetch' | 'preload',
+  href: string,
+  as?: string
+) {
+  if (typeof document === 'undefined') return;
+
+  const link = document.createElement('link');
+  link.rel = rel;
+  link.href = href;
+  if (as) link.setAttribute('as', as);
+
+  document.head.appendChild(link);
+}
+
+/**
+ * Critical CSS extraction helper
+ * Mark components that should have critical CSS
+ */
+export function markCriticalCSS(componentName: string) {
+  if (typeof window === 'undefined') return;
+
+  if (!window.__CRITICAL_CSS__) {
+    window.__CRITICAL_CSS__ = new Set();
+  }
+
+  window.__CRITICAL_CSS__.add(componentName);
+}
+
+/**
+ * Memory leak detector
+ * Helps identify memory leaks in development
+ */
+export function useMemoryLeakDetector(componentName: string) {
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const checkMemory = () => {
+      if (performance.memory) {
+        const { usedJSHeapSize, totalJSHeapSize, jsHeapSizeLimit } = performance.memory;
+
+        const usagePercent = (usedJSHeapSize / jsHeapSizeLimit) * 100;
+
+        if (usagePercent > 90) {
+          console.warn(
+            `${componentName}: High memory usage detected!`,
+            {
+              used: (usedJSHeapSize / 1048576).toFixed(2) + ' MB',
+              total: (totalJSHeapSize / 1048576).toFixed(2) + ' MB',
+              limit: (jsHeapSizeLimit / 1048576).toFixed(2) + ' MB',
+              usage: usagePercent.toFixed(2) + '%',
+            }
+          );
+        }
+      }
+    };
+
+    const interval = setInterval(checkMemory, 5000);
+
+    return () => clearInterval(interval);
+  }, [componentName]);
+}
+
+/**
+ * Request idle callback hook
+ * Schedule non-critical work during idle periods
+ */
+export function useIdleCallback(callback: () => void, deps: any[] = []) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handle = window.requestIdleCallback?.(callback) || setTimeout(callback, 0);
+
+    return () => {
+      if (typeof handle === 'number') {
+        window.cancelIdleCallback ? window.cancelIdleCallback(handle) : clearTimeout(handle);
+      }
+    };
+  }, deps);
+}
+
+/**
+ * Font loading optimization
+ * Prevent layout shift from font loading
+ */
+export function useFontLoading(fontFamily: string) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    document.fonts.ready.then(() => {
+      const font = Array.from(document.fonts).find(
+        (f) => f.family === fontFamily
+      );
+
+      if (font && font.status === 'loaded') {
+        setIsLoaded(true);
+      }
+    });
+  }, [fontFamily]);
+
+  return isLoaded;
+}
+
+/**
+ * Service worker registration
+ * Enable offline capabilities and caching
+ */
+export function registerServiceWorker() {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        console.log('Service Worker registered:', registration);
+
+        // Check for updates periodically
+        setInterval(() => {
+          registration.update();
+        }, 60000); // Every minute
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error);
+      });
+  });
+}
+
+/**
+ * Performance budget monitor
+ * Alert when bundle size or metrics exceed budget
+ */
+export const PERFORMANCE_BUDGET = {
+  maxBundleSize: 250, // KB
+  maxImageSize: 100, // KB
+  maxLCP: 2500, // ms
+  maxFID: 100, // ms
+  maxCLS: 0.1,
+  maxTTI: 3500, // ms Time to Interactive
+};
+
+export function checkPerformanceBudget() {
+  if (typeof window === 'undefined') return;
+
+  const violations: string[] = [];
+
+  // Check bundle size
+  const scripts = Array.from(document.querySelectorAll('script[src]'));
+  const totalScriptSize = scripts.reduce((acc, script) => {
+    return acc + (script.textContent?.length || 0);
+  }, 0);
+
+  if (totalScriptSize / 1024 > PERFORMANCE_BUDGET.maxBundleSize) {
+    violations.push(`Bundle size exceeds budget: ${(totalScriptSize / 1024).toFixed(2)} KB`);
+  }
+
+  // Log violations
+  if (violations.length > 0) {
+    console.warn('Performance budget violations:', violations);
+  }
+
+  return violations;
+}
+
+// TypeScript declarations for global objects
+declare global {
+  interface Window {
+    analytics?: any;
+    __CRITICAL_CSS__?: Set<string>;
+    // requestIdleCallback and cancelIdleCallback are standard Web APIs
+    // __NEXT_DATA__ is provided by Next.js types
+  }
+
+  interface Performance {
+    memory?: {
+      usedJSHeapSize: number;
+      totalJSHeapSize: number;
+      jsHeapSizeLimit: number;
+    };
+  }
+}
+
+export default {
+  useVirtualScroll,
+  useIntersectionObserver,
+  useLazyImage,
+  usePrefetch,
+  useDebouncedValue,
+  usePerformanceMonitor,
+  useMemoryLeakDetector,
+  useIdleCallback,
+  useFontLoading,
+  initWebVitals,
+  registerServiceWorker,
+  checkPerformanceBudget,
+};

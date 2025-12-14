@@ -1,0 +1,1098 @@
+/**
+ * Advanced AI Routes
+ * API endpoints for GAP #6 - Advanced AI Capabilities
+ */
+
+import { Router, Request, Response } from 'express';
+import { body, param, query, validationResult } from 'express-validator';
+import AdvancedAIService from '../services/AdvancedAIService';
+import { PrismaClient } from '@prisma/client';
+import { createModuleLogger } from '../lib/logger';
+
+const router: Router = Router();
+const prisma = new PrismaClient();
+const logger = createModuleLogger('ai-advanced');
+
+// Middleware to check authentication
+const requireAuth = (req: Request, res: Response, next: Function) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+};
+
+// Middleware to check organization access
+const requireOrganization = async (req: Request, res: Response, next: Function) => {
+  const user = req.user as any;
+  if (!user?.organizationId) {
+    return res.status(403).json({ error: 'Organization access required' });
+  }
+  req.organizationId = user.organizationId;
+  next();
+};
+
+// ====================================
+// Smart Categorization Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/categorize
+ * Auto-categorize meetings
+ */
+router.post(
+  '/categorize',
+  requireAuth,
+  requireOrganization,
+  [
+    body('text').isString().notEmpty().withMessage('Text is required'),
+    body('customCategories').optional().isArray(),
+    body('industryContext').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { text, customCategories, industryContext } = req.body;
+      const organizationId = req.organizationId as string;
+
+      const result = await AdvancedAIService.categorizeMeeting({
+        text,
+        customCategories,
+        industryContext,
+        organizationId,
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Categorization error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to categorize meeting',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Custom Vocabulary Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/vocabulary
+ * Add custom vocabulary term
+ */
+router.post(
+  '/vocabulary',
+  requireAuth,
+  requireOrganization,
+  [
+    body('term').isString().notEmpty().withMessage('Term is required'),
+    body('expansion').optional().isString(),
+    body('definition').optional().isString(),
+    body('aliases').optional().isArray(),
+    body('category').optional().isString(),
+    body('industry').optional().isString(),
+    body('usage').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { term, expansion, definition, aliases, category, industry, usage } = req.body;
+      const organizationId = req.organizationId as string;
+      const userId = (req.user as any)?.id;
+
+      const vocabularyEntry = await AdvancedAIService.addVocabularyTerm(
+        organizationId,
+        term,
+        expansion,
+        definition,
+        {
+          aliases,
+          category,
+          industry,
+          usage,
+          userId,
+        }
+      );
+
+      res.status(201).json(vocabularyEntry);
+    } catch (error) {
+      logger.error('Add vocabulary error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to add vocabulary term',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/vocabulary
+ * List custom vocabulary
+ */
+router.get(
+  '/vocabulary',
+  requireAuth,
+  requireOrganization,
+  [
+    query('category').optional().isString(),
+    query('industry').optional().isString(),
+    query('isActive').optional().isBoolean(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.organizationId as string;
+      const { category, industry, isActive } = req.query;
+
+      const vocabulary = await AdvancedAIService.getVocabulary(organizationId, {
+        category: category as string,
+        industry: industry as string,
+        isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
+      });
+
+      res.json(vocabulary);
+    } catch (error) {
+      logger.error('Get vocabulary error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to fetch vocabulary',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * DELETE /api/ai/vocabulary/:id
+ * Delete vocabulary term
+ */
+router.delete(
+  '/vocabulary/:id',
+  requireAuth,
+  requireOrganization,
+  [param('id').isUUID().withMessage('Valid vocabulary ID is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { id } = req.params;
+      const organizationId = req.organizationId as string;
+
+      await AdvancedAIService.deleteVocabularyTerm(id, organizationId);
+
+      res.json({ success: true, message: 'Vocabulary term deleted' });
+    } catch (error) {
+      logger.error('Delete vocabulary error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to delete vocabulary term',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/expand-vocabulary
+ * Expand vocabulary in text
+ */
+router.post(
+  '/expand-vocabulary',
+  requireAuth,
+  requireOrganization,
+  [
+    body('text').isString().notEmpty().withMessage('Text is required'),
+    body('industryContext').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { text, industryContext } = req.body;
+      const organizationId = req.organizationId as string;
+
+      const result = await AdvancedAIService.expandVocabulary({
+        text,
+        organizationId,
+        industryContext,
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Expand vocabulary error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to expand vocabulary',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Meeting Quality Scoring Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/quality-score
+ * Score meeting quality
+ */
+router.post(
+  '/quality-score',
+  requireAuth,
+  requireOrganization,
+  [
+    body('meetingId').isUUID().withMessage('Valid meeting ID is required'),
+    body('meetingText').isString().notEmpty().withMessage('Meeting text is required'),
+    body('duration').isInt({ min: 1 }).withMessage('Duration must be a positive integer'),
+    body('participantCount').isInt({ min: 1 }).withMessage('Participant count must be a positive integer'),
+    body('objectives').optional().isArray(),
+    body('actionItems').optional().isArray(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId, meetingText, duration, participantCount, objectives, actionItems } = req.body;
+      const organizationId = req.organizationId as string;
+      const userId = (req.user as any)?.id;
+
+      // Verify meeting access
+      const meeting = await prisma.meeting.findFirst({
+        where: {
+          id: meetingId,
+          organizationId,
+        },
+      });
+
+      if (!meeting) {
+        return res.status(404).json({ error: 'Meeting not found' });
+      }
+
+      const result = await AdvancedAIService.scoreMeetingQuality({
+        meetingId,
+        meetingText,
+        duration,
+        participantCount,
+        objectives,
+        actionItems,
+        organizationId,
+        userId,
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Quality score error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to score meeting quality',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/quality-scores/:userId
+ * Get quality scores for user's meetings
+ */
+router.get(
+  '/quality-scores/:userId?',
+  requireAuth,
+  requireOrganization,
+  [
+    param('userId').optional().isUUID(),
+    query('limit').optional().isInt({ min: 1, max: 100 }),
+    query('minScore').optional().isFloat({ min: 0, max: 100 }),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.organizationId as string;
+      const { userId } = req.params;
+      const { limit, minScore } = req.query;
+
+      const scores = await AdvancedAIService.getQualityScores(organizationId, {
+        userId: userId || undefined,
+        limit: limit ? parseInt(limit as string) : undefined,
+        minScore: minScore ? parseFloat(minScore as string) : undefined,
+      });
+
+      res.json(scores);
+    } catch (error) {
+      logger.error('Get quality scores error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to fetch quality scores',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Predictive Analytics Endpoints
+// ====================================
+
+/**
+ * GET /api/ai/predictions/next-topics
+ * Predict next meeting topics
+ */
+router.get(
+  '/predictions/next-topics',
+  requireAuth,
+  requireOrganization,
+  [
+    query('limit').optional().isInt({ min: 1, max: 50 }),
+    query('teamContext').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.organizationId as string;
+      const { limit, teamContext } = req.query;
+
+      const result = await AdvancedAIService.predictNextTopics({
+        organizationId,
+        limit: limit ? parseInt(limit as string) : undefined,
+        teamContext: teamContext as string,
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Predict topics error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to predict topics',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/predictions/required-attendees
+ * Predict required attendees for meeting
+ */
+router.post(
+  '/predictions/required-attendees',
+  requireAuth,
+  requireOrganization,
+  [body('meetingTopic').isString().notEmpty().withMessage('Meeting topic is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingTopic } = req.body;
+      const organizationId = req.organizationId as string;
+
+      const result = await AdvancedAIService.predictRequiredAttendees({
+        meetingTopic,
+        organizationId,
+      });
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Predict attendees error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to predict attendees',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Custom AI Model Training Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/custom-model/train
+ * Train custom AI model
+ */
+router.post(
+  '/custom-model/train',
+  requireAuth,
+  requireOrganization,
+  [
+    body('name').isString().notEmpty().withMessage('Model name is required'),
+    body('description').optional().isString(),
+    body('modelType')
+      .isIn(['categorization', 'sentiment', 'summary', 'custom'])
+      .withMessage('Valid model type is required'),
+    body('baseModel').optional().isString(),
+    body('trainingExamples').isArray({ min: 10 }).withMessage('At least 10 training examples required'),
+    body('hyperparameters').optional().isObject(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { name, description, modelType, baseModel, trainingExamples, hyperparameters } = req.body;
+      const organizationId = req.organizationId as string;
+
+      const result = await AdvancedAIService.trainCustomModel({
+        organizationId,
+        name,
+        description,
+        modelType,
+        baseModel,
+        trainingExamples,
+        hyperparameters,
+      });
+
+      res.status(201).json(result);
+    } catch (error) {
+      logger.error('Train model error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to train custom model',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/custom-model/:id
+ * Get custom model status and details
+ */
+router.get(
+  '/custom-model/:id',
+  requireAuth,
+  requireOrganization,
+  [param('id').isUUID().withMessage('Valid model ID is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { id } = req.params;
+      const organizationId = req.organizationId as string;
+
+      const model = await AdvancedAIService.getModelStatus(id, organizationId);
+
+      res.json(model);
+    } catch (error) {
+      logger.error('Get model error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to get model status',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/custom-models
+ * List custom models for organization
+ */
+router.get(
+  '/custom-models',
+  requireAuth,
+  requireOrganization,
+  [
+    query('type').optional().isString(),
+    query('status').optional().isIn(['training', 'ready', 'failed', 'deprecated']),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.organizationId as string;
+      const { type, status } = req.query;
+
+      const models = await AdvancedAIService.listModels(organizationId, {
+        type: type as string,
+        status: status as string,
+      });
+
+      res.json(models);
+    } catch (error) {
+      logger.error('List models error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to list models',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Coaching Scorecard Endpoints
+// ====================================
+
+import { coachingScorecardService } from '../services/CoachingScorecardService';
+import { smartCategorizationService } from '../services/SmartCategorizationService';
+import { talkPatternAnalysisService } from '../services/TalkPatternAnalysisService';
+import { fillerWordService } from '../services/FillerWordService';
+import { followUpEmailService } from '../services/FollowUpEmailService';
+
+/**
+ * POST /api/ai/scorecard/evaluate
+ * Score meeting with coaching framework
+ */
+router.post(
+  '/scorecard/evaluate',
+  requireAuth,
+  requireOrganization,
+  [
+    body('meetingId').isUUID().withMessage('Valid meeting ID is required'),
+    body('frameworkId').isString().notEmpty().withMessage('Framework ID is required'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId, frameworkId } = req.body;
+      const userId = (req.user as any)?.id;
+
+      const scorecard = await coachingScorecardService.generateScorecard(
+        meetingId,
+        frameworkId,
+        userId
+      );
+
+      res.json(scorecard);
+    } catch (error) {
+      logger.error('Scorecard evaluation error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to evaluate scorecard',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/scorecard/templates
+ * Get pre-built coaching templates
+ */
+router.get(
+  '/scorecard/templates',
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const templates = [
+        { type: 'sales', ...coachingScorecardService.getPreBuiltTemplate('sales') },
+        { type: 'support', ...coachingScorecardService.getPreBuiltTemplate('support') },
+        { type: 'leadership', ...coachingScorecardService.getPreBuiltTemplate('leadership') },
+        { type: 'recruiting', ...coachingScorecardService.getPreBuiltTemplate('recruiting') },
+        { type: 'customer_success', ...coachingScorecardService.getPreBuiltTemplate('customer_success') },
+      ];
+
+      res.json(templates);
+    } catch (error) {
+      logger.error('Get templates error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to get templates',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/scorecard/framework
+ * Create custom coaching framework
+ */
+router.post(
+  '/scorecard/framework',
+  requireAuth,
+  requireOrganization,
+  [
+    body('name').isString().notEmpty().withMessage('Framework name is required'),
+    body('description').isString().notEmpty().withMessage('Description is required'),
+    body('criteria').isArray({ min: 1 }).withMessage('At least one criterion is required'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { name, description, criteria, templateType } = req.body;
+      const organizationId = req.organizationId as string;
+
+      let framework;
+      if (templateType) {
+        framework = await coachingScorecardService.createFromTemplate(organizationId, templateType);
+      } else {
+        framework = await coachingScorecardService.createCustomFramework(
+          organizationId,
+          name,
+          description,
+          criteria
+        );
+      }
+
+      res.status(201).json(framework);
+    } catch (error) {
+      logger.error('Create framework error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to create framework',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/scorecard/frameworks
+ * List all frameworks for organization
+ */
+router.get(
+  '/scorecard/frameworks',
+  requireAuth,
+  requireOrganization,
+  async (req: Request, res: Response) => {
+    try {
+      const organizationId = req.organizationId as string;
+      const frameworks = await coachingScorecardService.listFrameworks(organizationId);
+
+      res.json(frameworks);
+    } catch (error) {
+      logger.error('List frameworks error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to list frameworks',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/scorecard/:meetingId
+ * Get scorecard for meeting
+ */
+router.get(
+  '/scorecard/:meetingId',
+  requireAuth,
+  requireOrganization,
+  [param('meetingId').isUUID()],
+  async (req: Request, res: Response) => {
+    try {
+      const { meetingId } = req.params;
+      const scorecard = await coachingScorecardService.getScorecard(meetingId);
+
+      if (!scorecard) {
+        return res.status(404).json({ error: 'Scorecard not found' });
+      }
+
+      res.json(scorecard);
+    } catch (error) {
+      logger.error('Get scorecard error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to get scorecard',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/scorecard/trends/:userId
+ * Get performance trends over time
+ */
+router.get(
+  '/scorecard/trends/:userId',
+  requireAuth,
+  requireOrganization,
+  [
+    param('userId').isUUID(),
+    query('days').optional().isInt({ min: 1, max: 365 }),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const days = req.query.days ? parseInt(req.query.days as string) : 30;
+
+      const trends = await coachingScorecardService.getPerformanceTrends(userId, days);
+
+      res.json(trends);
+    } catch (error) {
+      console.error('Get trends error:', error);
+      res.status(500).json({
+        error: 'Failed to get trends',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Smart Categorization Endpoints
+// ====================================
+
+/**
+ * GET /api/ai/categorize/:meetingId
+ * Get smart categorization for meeting
+ */
+router.get(
+  '/categorize/:meetingId',
+  requireAuth,
+  requireOrganization,
+  [param('meetingId').isUUID()],
+  async (req: Request, res: Response) => {
+    try {
+      const { meetingId } = req.params;
+
+      // Check if already analyzed
+      let result = await smartCategorizationService.getCategorizationResults(meetingId);
+
+      // If not, analyze now
+      if (!result) {
+        result = await smartCategorizationService.categorizeMeeting(meetingId);
+      }
+
+      res.json(result);
+    } catch (error) {
+      logger.error('Categorization error', { error: (error as Error).message, stack: (error as Error).stack });
+      res.status(500).json({
+        error: 'Failed to categorize meeting',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/categorize/analyze
+ * Analyze meeting for categorization
+ */
+router.post(
+  '/categorize/analyze',
+  requireAuth,
+  requireOrganization,
+  [body('meetingId').isUUID().withMessage('Valid meeting ID is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId } = req.body;
+      const result = await smartCategorizationService.categorizeMeeting(meetingId);
+
+      res.json(result);
+    } catch (error) {
+      console.error('Categorization analysis error:', error);
+      res.status(500).json({
+        error: 'Failed to analyze categorization',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Talk Pattern Analysis Endpoints
+// ====================================
+
+/**
+ * GET /api/ai/talk-patterns/:meetingId
+ * Get talk pattern analysis for meeting
+ */
+router.get(
+  '/talk-patterns/:meetingId',
+  requireAuth,
+  requireOrganization,
+  [param('meetingId').isUUID()],
+  async (req: Request, res: Response) => {
+    try {
+      const { meetingId } = req.params;
+
+      // Check if already analyzed
+      let result = await talkPatternAnalysisService.getAnalysisResults(meetingId);
+
+      // If not, analyze now
+      if (!result) {
+        result = await talkPatternAnalysisService.analyzeMeeting(meetingId);
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error('Talk pattern analysis error:', error);
+      res.status(500).json({
+        error: 'Failed to analyze talk patterns',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/talk-patterns/analyze
+ * Analyze meeting for talk patterns
+ */
+router.post(
+  '/talk-patterns/analyze',
+  requireAuth,
+  requireOrganization,
+  [body('meetingId').isUUID().withMessage('Valid meeting ID is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId } = req.body;
+      const result = await talkPatternAnalysisService.analyzeMeeting(meetingId);
+
+      res.json(result);
+    } catch (error) {
+      console.error('Talk pattern analysis error:', error);
+      res.status(500).json({
+        error: 'Failed to analyze talk patterns',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Filler Word Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/clean-transcript
+ * Remove filler words from transcript
+ */
+router.post(
+  '/clean-transcript',
+  requireAuth,
+  requireOrganization,
+  [body('meetingId').isUUID().withMessage('Valid meeting ID is required')],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId } = req.body;
+      const result = await fillerWordService.analyzeMeeting(meetingId);
+
+      res.json(result);
+    } catch (error) {
+      console.error('Clean transcript error:', error);
+      res.status(500).json({
+        error: 'Failed to clean transcript',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/filler-words/:meetingId
+ * Get filler word analysis
+ */
+router.get(
+  '/filler-words/:meetingId',
+  requireAuth,
+  requireOrganization,
+  [param('meetingId').isUUID()],
+  async (req: Request, res: Response) => {
+    try {
+      const { meetingId } = req.params;
+      const format = req.query.format as 'txt' | 'srt' | 'vtt' | undefined;
+
+      if (format) {
+        // Export cleaned transcript
+        const cleanedTranscript = await fillerWordService.exportCleanedTranscript(meetingId, format);
+
+        res.setHeader('Content-Type', format === 'txt' ? 'text/plain' : 'text/vtt');
+        res.setHeader('Content-Disposition', `attachment; filename="cleaned-transcript.${format}"`);
+        res.send(cleanedTranscript);
+      } else {
+        // Get analysis
+        let result = await fillerWordService.getAnalysis(meetingId);
+
+        if (!result) {
+          result = await fillerWordService.analyzeMeeting(meetingId);
+        }
+
+        res.json(result);
+      }
+    } catch (error) {
+      console.error('Filler words error:', error);
+      res.status(500).json({
+        error: 'Failed to get filler word analysis',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+// ====================================
+// Follow-Up Email Endpoints
+// ====================================
+
+/**
+ * POST /api/ai/draft-email
+ * Draft follow-up email
+ */
+router.post(
+  '/draft-email',
+  requireAuth,
+  requireOrganization,
+  [
+    body('meetingId').isUUID().withMessage('Valid meeting ID is required'),
+    body('templateType').optional().isString(),
+    body('tone').optional().isIn(['professional', 'friendly', 'formal', 'casual', 'enthusiastic']),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId, templateType, tone, customInstructions, recipients } = req.body;
+
+      const draft = await followUpEmailService.draftEmail({
+        meetingId,
+        templateType,
+        tone,
+        customInstructions,
+        recipients,
+      });
+
+      res.json(draft);
+    } catch (error) {
+      console.error('Draft email error:', error);
+      res.status(500).json({
+        error: 'Failed to draft email',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/ai/draft-email/:meetingId
+ * Get email draft for meeting
+ */
+router.get(
+  '/draft-email/:meetingId',
+  requireAuth,
+  requireOrganization,
+  [param('meetingId').isUUID()],
+  async (req: Request, res: Response) => {
+    try {
+      const { meetingId } = req.params;
+      const draftId = req.query.draftId as string;
+
+      const draft = await followUpEmailService.getDraft(meetingId, draftId);
+
+      if (!draft) {
+        return res.status(404).json({ error: 'Draft not found' });
+      }
+
+      res.json(draft);
+    } catch (error) {
+      console.error('Get draft error:', error);
+      res.status(500).json({
+        error: 'Failed to get email draft',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/draft-email/:meetingId/regenerate
+ * Regenerate email with different options
+ */
+router.post(
+  '/draft-email/:meetingId/regenerate',
+  requireAuth,
+  requireOrganization,
+  [
+    param('meetingId').isUUID(),
+    body('tone').optional().isIn(['professional', 'friendly', 'formal', 'casual', 'enthusiastic']),
+    body('templateType').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId } = req.params;
+      const { tone, templateType, customInstructions } = req.body;
+
+      const draft = await followUpEmailService.regenerateEmail(meetingId, {
+        tone,
+        templateType,
+        customInstructions,
+      });
+
+      res.json(draft);
+    } catch (error) {
+      console.error('Regenerate email error:', error);
+      res.status(500).json({
+        error: 'Failed to regenerate email',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/ai/draft-email/:meetingId/send
+ * Send email draft
+ */
+router.post(
+  '/draft-email/:meetingId/send',
+  requireAuth,
+  requireOrganization,
+  [
+    param('meetingId').isUUID(),
+    body('draftId').isString().notEmpty(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { meetingId } = req.params;
+      const { draftId } = req.body;
+
+      await followUpEmailService.sendEmail(draftId, meetingId);
+
+      res.json({ success: true, message: 'Email sent successfully' });
+    } catch (error) {
+      console.error('Send email error:', error);
+      res.status(500).json({
+        error: 'Failed to send email',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+);
+
+export default router;

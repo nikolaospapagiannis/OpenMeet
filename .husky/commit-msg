@@ -1,0 +1,21 @@
+echo "📝 ENTERPRISE ENFORCEMENT: Validating commit message..."
+
+# Commitlint for conventional commits
+npx --no -- commitlint --edit "$1" || {
+    echo "❌ FAILED: Commit message violates enterprise standards!"
+    echo ""
+    echo "REQUIRED FORMAT: <type>(<scope>): <subject>"
+    echo ""
+    echo "EXAMPLES:"
+    echo "  feat(agents): implement Fortune 100 grade market analysis"
+    echo "  fix(security): patch critical vulnerability in auth flow"
+    echo "  perf(backend): optimize agent execution to sub-100ms"
+    echo "  test(e2e): add penetration testing scenarios"
+    echo ""
+    echo "ALLOWED TYPES: feat, fix, docs, style, refactor, test, chore, perf, security"
+    echo ""
+    echo "This is ENTERPRISE software - commit messages must be PROFESSIONAL!"
+    exit 1
+}
+
+echo "✅ Commit message meets enterprise standards!"

@@ -1,0 +1,42 @@
+{
+  "name": "High Error Rate Alert",
+  "tags": ["error", "production", "critical"],
+  "rule_type_id": ".es-query",
+  "params": {
+    "size": 100,
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [50],
+    "thresholdComparator": ">",
+    "searchConfiguration": {
+      "index": "logs-*",
+      "query": {
+        "query": "log_level:error OR http_status:[500 TO 599]",
+        "language": "kuery"
+      }
+    }
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "actions": [
+    {
+      "id": "slack-connector",
+      "group": "query matched",
+      "params": {
+        "message": "🚨 High Error Rate Alert\n\nError count exceeded threshold in the last 5 minutes.\n\n*Count:* {{context.value}}\n*Threshold:* 50\n*Time:* {{context.date}}\n\nCheck Kibana for details: https://kibana.openmeet.com"
+      }
+    },
+    {
+      "id": "email-connector",
+      "group": "query matched",
+      "params": {
+        "to": ["ops@openmeet.com"],
+        "subject": "🚨 High Error Rate Alert - {{context.value}} errors",
+        "message": "Error count exceeded threshold.\n\nCount: {{context.value}}\nThreshold: 50\nTime: {{context.date}}\n\nCheck Kibana: https://kibana.openmeet.com"
+      }
+    }
+  ],
+  "notify_when": "onActionGroupChange",
+  "throttle": "5m"
+}

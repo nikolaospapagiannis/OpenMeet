@@ -1,0 +1,660 @@
+/**
+ * Auth0 Integration Service
+ *
+ * Provides complete integration with Auth0 for:
+ * - Universal Login
+ * - Social & Enterprise Connections
+ * - User Management API
+ * - Role-based Access Control
+ * - Multi-factor Authentication
+ */
+
+import { AuthenticationClient, ManagementClient } from 'auth0';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export interface Auth0Config {
+  domain: string;
+  clientId: string;
+  clientSecret: string;
+  connection?: string;
+}
+
+export interface Auth0User {
+  user_id: string;
+  email: string;
+  email_verified: boolean;
+  name?: string;
+  nickname?: string;
+  picture?: string;
+  user_metadata?: Record<string, any>;
+  app_metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  identities?: Array<{
+    provider: string;
+    user_id: string;
+    connection: string;
+    isSocial: boolean;
+  }>;
+  blocked?: boolean;
+  last_login?: string;
+  logins_count?: number;
+}
+
+export interface Auth0Role {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export class Auth0IntegrationService {
+  /**
+   * Get Auth0 Management Client for organization
+   */
+  private async getManagementClient(organizationId: string): Promise<ManagementClient> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (
+      !ssoConfig ||
+      !ssoConfig.auth0Domain ||
+      !ssoConfig.auth0ClientId ||
+      !ssoConfig.auth0ClientSecret
+    ) {
+      throw new Error('Auth0 not configured for organization');
+    }
+
+    return new ManagementClient({
+      domain: ssoConfig.auth0Domain,
+      clientId: ssoConfig.auth0ClientId,
+      clientSecret: ssoConfig.auth0ClientSecret,
+      scope: 'read:users update:users delete:users create:users read:roles update:roles',
+    });
+  }
+
+  /**
+   * Get Auth0 Authentication Client
+   */
+  private async getAuthClient(organizationId: string): Promise<AuthenticationClient> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.auth0Domain) {
+      throw new Error('Auth0 not configured');
+    }
+
+    return new AuthenticationClient({
+      domain: ssoConfig.auth0Domain,
+      clientId: ssoConfig.auth0ClientId || '',
+      clientSecret: ssoConfig.auth0ClientSecret,
+    });
+  }
+
+  /**
+   * Authenticate user with username/password
+   */
+  async authenticateUser(
+    organizationId: string,
+    username: string,
+    password: string
+  ): Promise<{
+    accessToken: string;
+    idToken: string;
+    refreshToken?: string;
+    expiresIn: number;
+    tokenType: string;
+  }> {
+    const authClient = await this.getAuthClient(organizationId);
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig?.auth0Connection) {
+      throw new Error('Auth0 connection not configured');
+    }
+
+    try {
+      const result = await authClient.oauth.passwordGrant({
+        username,
+        password,
+        realm: ssoConfig.auth0Connection,
+        scope: 'openid profile email offline_access',
+      });
+
+      return {
+        accessToken: result.data.access_token,
+        idToken: result.data.id_token,
+        refreshToken: result.data.refresh_token,
+        expiresIn: result.data.expires_in,
+        tokenType: result.data.token_type,
+      };
+    } catch (error: any) {
+      throw new Error(`Auth0 authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user info from access token
+   */
+  async getUserInfo(
+    organizationId: string,
+    accessToken: string
+  ): Promise<Auth0User> {
+    const authClient = await this.getAuthClient(organizationId);
+
+    try {
+      const userInfo = await authClient.users.getInfo(accessToken);
+      return userInfo.data as any as Auth0User;
+    } catch (error: any) {
+      throw new Error(`Failed to get user info: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUser(organizationId: string, userId: string): Promise<Auth0User> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const user = await mgmtClient.users.get({ id: userId });
+      return user.data as any as Auth0User;
+    } catch (error: any) {
+      throw new Error(`Failed to get user: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user by email
+   */
+  async getUserByEmail(
+    organizationId: string,
+    email: string
+  ): Promise<Auth0User | null> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const users = await mgmtClient.users.getByEmail(email);
+      return users.data.length > 0 ? (users.data[0] as any as Auth0User) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Create user in Auth0
+   */
+  async createUser(
+    organizationId: string,
+    userData: {
+      email: string;
+      password?: string;
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      emailVerified?: boolean;
+      connection?: string;
+      userMetadata?: Record<string, any>;
+      appMetadata?: Record<string, any>;
+    }
+  ): Promise<Auth0User> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    const connection = userData.connection || ssoConfig?.auth0Connection || 'Username-Password-Authentication';
+
+    try {
+      const newUser: any = {
+        email: userData.email,
+        connection,
+        email_verified: userData.emailVerified || false,
+      };
+
+      if (userData.password) {
+        newUser.password = userData.password;
+      }
+
+      if (userData.name) {
+        newUser.name = userData.name;
+      } else if (userData.firstName && userData.lastName) {
+        newUser.name = `${userData.firstName} ${userData.lastName}`;
+      }
+
+      if (userData.userMetadata) {
+        newUser.user_metadata = userData.userMetadata;
+      }
+
+      if (userData.appMetadata) {
+        newUser.app_metadata = userData.appMetadata;
+      }
+
+      const user = await mgmtClient.users.create(newUser);
+      return user.data as any as Auth0User;
+    } catch (error: any) {
+      throw new Error(`Failed to create user: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update user in Auth0
+   */
+  async updateUser(
+    organizationId: string,
+    userId: string,
+    updates: {
+      email?: string;
+      name?: string;
+      emailVerified?: boolean;
+      blocked?: boolean;
+      userMetadata?: Record<string, any>;
+      appMetadata?: Record<string, any>;
+    }
+  ): Promise<Auth0User> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const updateData: any = {};
+
+      if (updates.email) updateData.email = updates.email;
+      if (updates.name) updateData.name = updates.name;
+      if (updates.emailVerified !== undefined)
+        updateData.email_verified = updates.emailVerified;
+      if (updates.blocked !== undefined) updateData.blocked = updates.blocked;
+      if (updates.userMetadata) updateData.user_metadata = updates.userMetadata;
+      if (updates.appMetadata) updateData.app_metadata = updates.appMetadata;
+
+      const user = await mgmtClient.users.update({ id: userId }, updateData);
+      return user.data as any as Auth0User;
+    } catch (error: any) {
+      throw new Error(`Failed to update user: ${error.message}`);
+    }
+  }
+
+  /**
+   * Delete user from Auth0
+   */
+  async deleteUser(organizationId: string, userId: string): Promise<void> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      await mgmtClient.users.delete({ id: userId });
+    } catch (error: any) {
+      throw new Error(`Failed to delete user: ${error.message}`);
+    }
+  }
+
+  /**
+   * Block/unblock user
+   */
+  async setUserBlocked(
+    organizationId: string,
+    userId: string,
+    blocked: boolean
+  ): Promise<void> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      await mgmtClient.users.update({ id: userId }, { blocked });
+    } catch (error: any) {
+      throw new Error(`Failed to update user block status: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get all users
+   */
+  async getUsers(
+    organizationId: string,
+    options?: {
+      page?: number;
+      perPage?: number;
+      search?: string;
+    }
+  ): Promise<{ users: Auth0User[]; total: number }> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const params: any = {
+        page: options?.page || 0,
+        per_page: options?.perPage || 50,
+        include_totals: true,
+      };
+
+      if (options?.search) {
+        params.q = options.search;
+        params.search_engine = 'v3';
+      }
+
+      const result = await mgmtClient.users.getAll(params);
+
+      return {
+        users: result.data.users as any as Auth0User[],
+        total: result.data.total || 0,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to get users: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user roles
+   */
+  async getUserRoles(organizationId: string, userId: string): Promise<Auth0Role[]> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const roles = await mgmtClient.users.getRoles({ id: userId });
+      return roles.data as any as Auth0Role[];
+    } catch (error: any) {
+      throw new Error(`Failed to get user roles: ${error.message}`);
+    }
+  }
+
+  /**
+   * Assign roles to user
+   */
+  async assignRolesToUser(
+    organizationId: string,
+    userId: string,
+    roleIds: string[]
+  ): Promise<void> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      await mgmtClient.users.assignRoles({ id: userId }, { roles: roleIds });
+    } catch (error: any) {
+      throw new Error(`Failed to assign roles: ${error.message}`);
+    }
+  }
+
+  /**
+   * Remove roles from user
+   */
+  async removeRolesFromUser(
+    organizationId: string,
+    userId: string,
+    roleIds: string[]
+  ): Promise<void> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      await mgmtClient.users.removeRoles({ id: userId }, { roles: roleIds });
+    } catch (error: any) {
+      throw new Error(`Failed to remove roles: ${error.message}`);
+    }
+  }
+
+  /**
+   * List available connections
+   */
+  async listConnections(organizationId: string): Promise<any[]> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      const connections = await mgmtClient.connections.getAll();
+      return connections.data;
+    } catch (error: any) {
+      throw new Error(`Failed to list connections: ${error.message}`);
+    }
+  }
+
+  /**
+   * Enroll user in MFA
+   */
+  async enrollMFA(
+    organizationId: string,
+    userId: string,
+    factorType: 'sms' | 'totp' | 'push-notification'
+  ): Promise<any> {
+    const mgmtClient = await this.getManagementClient(organizationId);
+
+    try {
+      // Get user's current enrollments
+      const enrollments = await mgmtClient.users.getAuthenticationMethods({ id: userId });
+
+      // Check if already enrolled in this factor type
+      const existing = enrollments.data.find((e: any) => e.type === factorType);
+
+      if (existing) {
+        return existing;
+      }
+
+      // Create new enrollment
+      const enrollment = await mgmtClient.users.createAuthenticationMethod(
+        { id: userId },
+        {
+          type: factorType,
+        } as any
+      );
+
+      return enrollment.data;
+    } catch (error: any) {
+      throw new Error(`Failed to enroll MFA: ${error.message}`);
+    }
+  }
+
+  /**
+   * Sync users from Auth0 to our database
+   */
+  async syncUsers(organizationId: string): Promise<{
+    created: number;
+    updated: number;
+    deactivated: number;
+  }> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig) {
+      throw new Error('SSO config not found');
+    }
+
+    let created = 0;
+    let updated = 0;
+    let deactivated = 0;
+    let page = 0;
+    const perPage = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { users, total } = await this.getUsers(organizationId, { page, perPage });
+
+      for (const auth0User of users) {
+        const scimUser = await prisma.sCIMUser.findFirst({
+          where: {
+            ssoConfigId: ssoConfig.id,
+            externalId: auth0User.user_id,
+          },
+        });
+
+        if (!scimUser) {
+          // Create new user
+          const user = await prisma.user.create({
+            data: {
+              email: auth0User.email,
+              firstName: auth0User.name?.split(' ')[0],
+              lastName: auth0User.name?.split(' ').slice(1).join(' '),
+              organizationId,
+              emailVerified: auth0User.email_verified,
+              oauthProvider: 'auth0',
+              oauthProviderId: auth0User.user_id,
+            },
+          });
+
+          await prisma.sCIMUser.create({
+            data: {
+              ssoConfigId: ssoConfig.id,
+              userId: user.id,
+              externalId: auth0User.user_id,
+              userName: auth0User.email,
+              active: !auth0User.blocked,
+              givenName: auth0User.name?.split(' ')[0],
+              familyName: auth0User.name?.split(' ').slice(1).join(' '),
+              displayName: auth0User.name,
+              emails: [
+                {
+                  value: auth0User.email,
+                  type: 'work',
+                  primary: true,
+                },
+              ],
+              rawData: auth0User as any,
+            },
+          });
+
+          created++;
+        } else {
+          // Update existing user
+          if (scimUser.userId) {
+            await prisma.user.update({
+              where: { id: scimUser.userId },
+              data: {
+                firstName: auth0User.name?.split(' ')[0],
+                lastName: auth0User.name?.split(' ').slice(1).join(' '),
+                isActive: !auth0User.blocked,
+              },
+            });
+          }
+
+          await prisma.sCIMUser.update({
+            where: { id: scimUser.id },
+            data: {
+              active: !auth0User.blocked,
+              givenName: auth0User.name?.split(' ')[0],
+              familyName: auth0User.name?.split(' ').slice(1).join(' '),
+              displayName: auth0User.name,
+              lastSyncedAt: new Date(),
+              rawData: auth0User as any,
+            },
+          });
+
+          if (auth0User.blocked) {
+            deactivated++;
+          } else {
+            updated++;
+          }
+        }
+      }
+
+      hasMore = (page + 1) * perPage < total;
+      page++;
+    }
+
+    return { created, updated, deactivated };
+  }
+
+  /**
+   * Test Auth0 connection
+   */
+  async testConnection(config: Auth0Config): Promise<{
+    success: boolean;
+    message: string;
+    userCount?: number;
+  }> {
+    try {
+      const mgmtClient = new ManagementClient({
+        domain: config.domain,
+        clientId: config.clientId,
+        clientSecret: config.clientSecret,
+      });
+
+      const result = await mgmtClient.users.getAll({
+        page: 0,
+        per_page: 1,
+        include_totals: true,
+      });
+
+      return {
+        success: true,
+        message: 'Connection successful',
+        userCount: result.data.total,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  /**
+   * Get authorization URL for OAuth flow
+   */
+  async getAuthorizationUrl(
+    organizationId: string,
+    redirectUri: string,
+    state?: string
+  ): Promise<string> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.auth0Domain || !ssoConfig.auth0ClientId) {
+      throw new Error('Auth0 not configured');
+    }
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: ssoConfig.auth0ClientId,
+      redirect_uri: redirectUri,
+      scope: 'openid profile email offline_access',
+    });
+
+    if (state) {
+      params.append('state', state);
+    }
+
+    if (ssoConfig.auth0Connection) {
+      params.append('connection', ssoConfig.auth0Connection);
+    }
+
+    return `https://${ssoConfig.auth0Domain}/authorize?${params.toString()}`;
+  }
+
+  /**
+   * Exchange authorization code for tokens
+   */
+  async exchangeCodeForTokens(
+    organizationId: string,
+    code: string,
+    redirectUri: string
+  ): Promise<{
+    accessToken: string;
+    idToken: string;
+    refreshToken?: string;
+    expiresIn: number;
+  }> {
+    const authClient = await this.getAuthClient(organizationId);
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig?.auth0ClientSecret) {
+      throw new Error('Auth0 client secret not configured');
+    }
+
+    try {
+      const result = await authClient.oauth.authorizationCodeGrant({
+        code,
+        redirect_uri: redirectUri,
+      });
+
+      return {
+        accessToken: result.data.access_token,
+        idToken: result.data.id_token,
+        refreshToken: result.data.refresh_token,
+        expiresIn: result.data.expires_in,
+      };
+    } catch (error: any) {
+      throw new Error(`Failed to exchange code for tokens: ${error.message}`);
+    }
+  }
+}
+
+export const auth0IntegrationService = new Auth0IntegrationService();

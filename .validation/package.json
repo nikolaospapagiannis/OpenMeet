@@ -1,0 +1,32 @@
+{
+  "name": "kanbanai-enterprise",
+  "version": "1.0.0",
+  "description": "KanbanAI Enterprise SaaS Platform",
+  "scripts": {
+    "quality:check": "node scripts/quality-checks.js",
+    "security:scan": "npm audit --audit-level=moderate",
+    "architecture:validate": "node scripts/architecture-validation.js",
+    "test:coverage": "jest --coverage",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "chalk": "^5.6.2",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "fast-glob": "^3.3.3",
+    "fs-extra": "^11.3.1",
+    "glob": "^11.0.3",
+    "husky": "^8.0.0",
+    "jest": "^29.6.0",
+    "lint-staged": "^13.2.3",
+    "minimist": "^1.2.8",
+    "pre-commit": "^1.2.2",
+    "typescript": "^5.1.6"
+  }
+}

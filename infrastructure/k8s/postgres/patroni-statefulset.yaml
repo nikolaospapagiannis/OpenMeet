@@ -1,0 +1,241 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-patroni
+  namespace: openmeet-production
+  labels:
+    app: postgres
+    cluster-name: postgres-cluster
+spec:
+  clusterIP: None
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+    - port: 8008
+      targetPort: 8008
+      name: patroni
+  selector:
+    app: postgres
+    cluster-name: postgres-cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-master
+  namespace: openmeet-production
+  labels:
+    app: postgres
+    cluster-name: postgres-cluster
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: postgres
+    cluster-name: postgres-cluster
+    role: master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: openmeet-production
+  labels:
+    app: postgres
+    cluster-name: postgres-cluster
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+  selector:
+    app: postgres
+    cluster-name: postgres-cluster
+    role: replica
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-patroni
+  namespace: openmeet-production
+  labels:
+    app: postgres
+    cluster-name: postgres-cluster
+spec:
+  serviceName: postgres-patroni
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres
+      cluster-name: postgres-cluster
+  template:
+    metadata:
+      labels:
+        app: postgres
+        cluster-name: postgres-cluster
+    spec:
+      serviceAccountName: postgres
+      containers:
+        - name: postgres
+          image: patroni/patroni:3.1.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgres
+            - containerPort: 8008
+              name: patroni
+          env:
+            - name: PATRONI_KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PATRONI_KUBERNETES_LABELS
+              value: '{app: postgres, cluster-name: postgres-cluster}'
+            - name: PATRONI_SUPERUSER_USERNAME
+              value: postgres
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openmeet-secrets
+                  key: postgres-password
+            - name: PATRONI_REPLICATION_USERNAME
+              value: replicator
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openmeet-secrets
+                  key: postgres-replication-password
+            - name: PATRONI_SCOPE
+              value: postgres-cluster
+            - name: PATRONI_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PATRONI_POSTGRESQL_DATA_DIR
+              value: /var/lib/postgresql/data/pgdata
+            - name: PATRONI_POSTGRESQL_PGPASS
+              value: /tmp/pgpass
+            - name: PATRONI_KUBERNETES_USE_ENDPOINTS
+              value: "true"
+            - name: PATRONI_KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: PATRONI_KUBERNETES_PORTS
+              value: '[{"name": "postgres", "port": 5432}]'
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openmeet-secrets
+                  key: postgres-password
+            - name: REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openmeet-secrets
+                  key: postgres-replication-password
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: patroni-config
+              mountPath: /etc/patroni
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8008
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 8008
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: patroni-config
+          configMap:
+            name: patroni-config
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 100Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres
+  namespace: openmeet-production
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: postgres
+  namespace: openmeet-production
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - endpoints
+    verbs:
+      - get
+      - patch
+      - update
+      - create
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: postgres
+  namespace: openmeet-production
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: postgres
+subjects:
+  - kind: ServiceAccount
+    name: postgres

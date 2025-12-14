@@ -1,0 +1,123 @@
+#!/bin/bash
+# Master deployment script for ELK Stack
+# This script deploys the complete ELK stack in order
+
+set -e
+
+NAMESPACE="${NAMESPACE:-production}"
+KUBECTL="${KUBECTL:-kubectl}"
+
+echo "========================================="
+echo "ELK Stack Deployment"
+echo "========================================="
+echo "Namespace: ${NAMESPACE}"
+echo "Time: $(date)"
+echo "========================================="
+
+# Create namespace if it doesn't exist
+echo ""
+echo "Step 1: Creating namespace..."
+$KUBECTL create namespace ${NAMESPACE} --dry-run=client -o yaml | $KUBECTL apply -f -
+
+# Deploy Elasticsearch
+echo ""
+echo "Step 2: Deploying Elasticsearch..."
+$KUBECTL apply -f elasticsearch-statefulset.yaml -n ${NAMESPACE}
+$KUBECTL apply -f elasticsearch-service.yaml -n ${NAMESPACE}
+
+echo "Waiting for Elasticsearch to be ready..."
+$KUBECTL wait --for=condition=ready pod -l app=elasticsearch -n ${NAMESPACE} --timeout=600s || true
+
+# Deploy Logstash
+echo ""
+echo "Step 3: Deploying Logstash..."
+$KUBECTL apply -f logstash-configmap.yaml -n ${NAMESPACE}
+$KUBECTL apply -f logstash-deployment.yaml -n ${NAMESPACE}
+
+echo "Waiting for Logstash to be ready..."
+$KUBECTL wait --for=condition=ready pod -l app=logstash -n ${NAMESPACE} --timeout=300s || true
+
+# Deploy Kibana
+echo ""
+echo "Step 4: Deploying Kibana..."
+$KUBECTL apply -f kibana-deployment.yaml -n ${NAMESPACE}
+$KUBECTL apply -f kibana-service.yaml -n ${NAMESPACE}
+$KUBECTL apply -f kibana-ingress.yaml -n ${NAMESPACE}
+
+echo "Waiting for Kibana to be ready..."
+$KUBECTL wait --for=condition=ready pod -l app=kibana -n ${NAMESPACE} --timeout=300s || true
+
+# Deploy Filebeat
+echo ""
+echo "Step 5: Deploying Filebeat..."
+$KUBECTL apply -f filebeat-configmap.yaml -n ${NAMESPACE}
+$KUBECTL apply -f filebeat-daemonset.yaml -n ${NAMESPACE}
+
+echo "Waiting for Filebeat to be ready..."
+sleep 30
+
+# Display status
+echo ""
+echo "========================================="
+echo "Deployment Status"
+echo "========================================="
+echo ""
+echo "Elasticsearch:"
+$KUBECTL get pods -l app=elasticsearch -n ${NAMESPACE}
+echo ""
+echo "Logstash:"
+$KUBECTL get pods -l app=logstash -n ${NAMESPACE}
+echo ""
+echo "Kibana:"
+$KUBECTL get pods -l app=kibana -n ${NAMESPACE}
+echo ""
+echo "Filebeat:"
+$KUBECTL get pods -l app=filebeat -n ${NAMESPACE}
+echo ""
+echo "Services:"
+$KUBECTL get svc -l component=elk -n ${NAMESPACE}
+echo ""
+echo "Ingress:"
+$KUBECTL get ingress -l app=kibana -n ${NAMESPACE}
+
+# Get Kibana URL
+echo ""
+echo "========================================="
+echo "Access Information"
+echo "========================================="
+KIBANA_URL=$(kubectl get ingress kibana -n ${NAMESPACE} -o jsonpath='{.spec.rules[0].host}' 2>/dev/null || echo "kibana.openmeet.com")
+echo "Kibana URL: https://${KIBANA_URL}"
+echo "Username: elastic"
+echo "Password: changeme (stored in elasticsearch-credentials secret)"
+echo ""
+echo "To get the password:"
+echo "kubectl get secret elasticsearch-credentials -n ${NAMESPACE} -o jsonpath='{.data.password}' | base64 -d"
+
+echo ""
+echo "========================================="
+echo "Next Steps"
+echo "========================================="
+echo "1. Apply ILM policies:"
+echo "   cd ../../elk/index-lifecycle && ./apply-ilm-policies.sh"
+echo ""
+echo "2. Apply index templates:"
+echo "   cd ../../elk/index-templates && ./apply-index-templates.sh"
+echo ""
+echo "3. Setup snapshot repository:"
+echo "   cd ../../elk/backup && ./setup-snapshot-repository.sh"
+echo ""
+echo "4. Import Kibana dashboards:"
+echo "   Visit Kibana -> Management -> Saved Objects -> Import"
+echo "   Import dashboards from: ../../elk/kibana/dashboards/"
+echo ""
+echo "5. Setup alerting rules:"
+echo "   Visit Kibana -> Management -> Rules and Connectors"
+echo "   Import alerts from: ../../elk/kibana/alerts/"
+echo ""
+echo "6. Deploy backup CronJob:"
+echo "   kubectl apply -f ../../elk/backup/backup-cronjob.yaml -n ${NAMESPACE}"
+
+echo ""
+echo "========================================="
+echo "Deployment Complete!"
+echo "========================================="

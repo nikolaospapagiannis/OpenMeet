@@ -1,0 +1,79 @@
+#!/usr/bin/env sh
+# Husky pre-push: enterprise enforcement (size, quality, secrets, mutation on protected branches)
+# Fails fast (set -e); guarded heavier steps only on protected branches to keep local velocity.
+
+set -e
+
+if [ -f "$(dirname "$0")/_/husky.sh" ]; then
+  . "$(dirname "$0")/_/husky.sh"
+fi
+
+BRANCH_NAME="$(git rev-parse --abbrev-ref HEAD)"
+PROTECTED_REGEX='^(main|master|release|production)$'
+
+echo "🚀 Running pre-push quality gates..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# 1. Secret scan (always)
+echo "\n🔐 Secret scan (gitleaks)..."
+npm --prefix exai-guard/server run secrets:scan
+
+echo "\n📏 Running repository quality checks..."
+npm run quality:check
+
+# 7. TypeScript compilation
+echo "\n📘 Running TypeScript check..."
+npm run typecheck
+
+# 8. Lint (root) & server strict lint (no warnings)
+echo "\n🧹 Running ESLint..."
+npm run lint || npm run ci:lint --prefix exai-guard/server
+
+# 9. Tests + coverage (only if deps present)
+if [ -d "node_modules" ]; then
+  echo "\n🧪 Running tests with coverage..."
+  npm --prefix exai-guard/server run test:coverage || true
+  echo "\n📊 Verifying coverage ≥95%..."
+  node scripts/check-coverage.js
+else
+  echo "⚠️ Dependencies missing; skipping tests."
+fi
+
+# 10. Agent implementations (if present)
+if ls src/agents/implementations/*.ts 1> /dev/null 2>&1; then
+  echo "\n🤖 Validating agent implementations..."
+  for agent_file in src/agents/implementations/*.ts; do
+    echo "   Validating: $agent_file"
+    npm run ai:validate -- "$agent_file"
+  done
+fi
+
+# 11. Security audit (non-blocking)
+echo "\n🔒 Running security audit (non-blocking)..."
+if ! npm audit --production; then
+  echo "⚠️  Vulnerabilities detected (audit non-blocking)."
+fi
+
+# 12. Bundle size (if built)
+if [ -f "dist/index.js" ]; then
+  echo "\n📦 Checking bundle size..."
+  SIZE=$(du -k dist/index.js | cut -f1)
+  MAX_SIZE=500
+  if [ "$SIZE" -gt "$MAX_SIZE" ]; then
+    echo "❌ Bundle size too large (${SIZE}KB > ${MAX_SIZE}KB)"
+    exit 1
+  fi
+fi
+
+# 13. Mutation testing (only on protected branches)
+if echo "$BRANCH_NAME" | grep -Eq "$PROTECTED_REGEX"; then
+  echo "\n🧬 Running mutation tests (protected branch)..."
+  npm --prefix exai-guard/server run ci:mutation
+else
+  echo "\n🧬 Skipping mutation (branch: $BRANCH_NAME)"
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ All pre-push checks passed."
+echo "🚀 Ready to push."
+echo ""

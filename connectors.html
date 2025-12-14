@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrations Hub | OpenMeet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="connectors.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="ph-fill ph-lightning"></i></div>
+                <span class="logo-text">OpenMeet</span>
+            </div>
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-item"><i class="ph-bold ph-files"></i> Dashboard</a>
+                <a href="#" class="nav-item active"><i class="ph-bold ph-plugs-connected"></i> Connectors</a>
+                <a href="#" class="nav-item"><i class="ph-bold ph-gear"></i> Settings</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            
+            <header class="page-header">
+                <div class="header-content">
+                    <h1>Integration Hub</h1>
+                    <p>Supercharge your meeting intelligence by connecting your favorite tools.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="search-bar">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                        <input type="text" placeholder="Find an app (e.g. Salesforce)">
+                    </div>
+                    <button class="btn-primary"><i class="ph-bold ph-plus"></i> Request App</button>
+                </div>
+            </header>
+
+            <div class="scroll-container">
+                
+                <section class="bento-section">
+                    <div class="section-label">ESSENTIAL CONNECTIONS</div>
+                    
+                    <div class="bento-grid">
+                        <div class="bento-card large zoom-card">
+                            <div class="card-bg-glow"></div>
+                            <div class="bento-content">
+                                <div class="app-logo zoom-bg"><i class="ph-fill ph-video-camera"></i></div>
+                                <div>
+                                    <h3>Zoom Native Sync</h3>
+                                    <p>Auto-join scheduled meetings, record HD video, and sync transcripts instantly.</p>
+                                </div>
+                                <div class="toggle-wrapper">
+                                    <span class="status-text">Connected</span>
+                                    <label class="switch">
+                                        <input type="checkbox" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bento-card gcal-card">
+                            <div class="top-row">
+                                <div class="app-logo google-bg"><i class="ph-bold ph-calendar"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <h3>Google Calendar</h3>
+                            <p class="sm-text">Sync invites & links.</p>
+                        </div>
+
+                        <div class="bento-card slack-card">
+                            <div class="top-row">
+                                <div class="app-logo slack-bg"><i class="ph-fill ph-slack-logo"></i></div>
+                                <button class="btn-outline-sm">Connect</button>
+                            </div>
+                            <h3>Slack</h3>
+                            <p class="sm-text">Push summaries to channels.</p>
+                        </div>
+
+                        <div class="bento-card teams-card">
+                            <div class="top-row">
+                                <div class="app-logo teams-bg"><i class="ph-fill ph-microsoft-teams-logo"></i></div>
+                                <label class="switch">
+                                    <input type="checkbox">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <h3>Microsoft Teams</h3>
+                            <p class="sm-text">Bot auto-join enabled.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="grid-section">
+                    <div class="section-label">CRM & SALES</div>
+                    <div class="apps-grid">
+                        
+                        <div class="app-card">
+                            <div class="app-head">
+                                <div class="app-logo sf-bg"><i class="ph-fill ph-cloud"></i></div>
+                                <div class="badge-pro">Business</div>
+                            </div>
+                            <h3>Salesforce</h3>
+                            <p>Log calls, create leads, and update opportunities automatically.</p>
+                            <div class="app-footer">
+                                <button class="btn-connect">Connect</button>
+                                <a href="#" class="learn-more">Learn more</a>
+                            </div>
+                        </div>
+
+                        <div class="app-card active-border">
+                            <div class="app-head">
+                                <div class="app-logo hub-bg"><i class="ph-fill ph-share-network"></i></div>
+                                <div class="status-dot active"></div>
+                            </div>
+                            <h3>HubSpot</h3>
+                            <p>Sync meeting notes to contacts and companies in real-time.</p>
+                            <div class="app-footer">
+                                <button class="btn-connect connected">Manage</button>
+                                <span class="sync-time"><i class="ph-bold ph-arrows-clockwise"></i> 2m ago</span>
+                            </div>
+                        </div>
+
+                        <div class="app-card">
+                            <div class="app-head">
+                                <div class="app-logo pipe-bg">P</div>
+                            </div>
+                            <h3>Pipedrive</h3>
+                            <p>Attach audio files and summaries to your Pipedrive deals.</p>
+                            <div class="app-footer">
+                                <button class="btn-connect">Connect</button>
+                            </div>
+                        </div>
+                        
+                        <div class="app-card">
+                            <div class="app-head">
+                                <div class="app-logo zap-bg"><i class="ph-bold ph-lightning"></i></div>
+                            </div>
+                            <h3>Zapier</h3>
+                            <p>Trigger workflows in 5,000+ apps when a meeting ends.</p>
+                            <div class="app-footer">
+                                <button class="btn-connect">Connect</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <section class="dev-section">
+                    <div class="dev-card">
+                        <div class="dev-content">
+                            <div class="icon-box"><i class="ph-bold ph-code"></i></div>
+                            <div>
+                                <h3>OpenMeet API & Webhooks</h3>
+                                <p>Build custom workflows. Access raw transcripts, audio, and AI insights programmatically.</p>
+                            </div>
+                        </div>
+                        <div class="dev-actions">
+                            <div class="api-key-mask">sk_live_................8x92</div>
+                            <button class="btn-white">View Docs</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+</body>
+</html>

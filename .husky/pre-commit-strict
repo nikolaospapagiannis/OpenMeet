@@ -1,0 +1,84 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running AI Implementation Validation..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Check for forbidden patterns
+echo "🚫 Checking for forbidden patterns..."
+python scripts/check-forbidden-patterns.py src/
+
+if [ $? -ne 0 ]; then
+  echo "❌ Commit blocked: Forbidden patterns detected!"
+  echo "   Run 'python scripts/check-forbidden-patterns.py src/' to see details"
+  exit 1
+fi
+
+# Check for TODO/FIXME comments
+echo "📝 Checking for TODO/FIXME comments..."
+if grep -r "TODO\|FIXME\|HACK\|XXX" src/ --include="*.ts" --include="*.js" 2>/dev/null; then
+  echo "❌ Commit blocked: TODO/FIXME comments found!"
+  echo "   Remove all TODO/FIXME/HACK/XXX comments before committing"
+  exit 1
+fi
+
+# Check for console statements
+echo "🖥️  Checking for console statements..."
+if grep -r "console\.\(log\|error\|warn\|info\|debug\)" src/ --include="*.ts" --include="*.js" 2>/dev/null; then
+  echo "❌ Commit blocked: Console statements found!"
+  echo "   Use proper logging service instead of console"
+  exit 1
+fi
+
+# Check for any types
+echo "🎯 Checking for 'any' types..."
+if grep -r ":\s*any\|as\s*any\|<any>" src/ --include="*.ts" --include="*.tsx" 2>/dev/null; then
+  echo "❌ Commit blocked: 'any' types found!"
+  echo "   Use proper TypeScript types instead of 'any'"
+  exit 1
+fi
+
+# Run TypeScript compiler
+echo "📐 Running TypeScript type check..."
+npm run typecheck
+
+if [ $? -ne 0 ]; then
+  echo "❌ Commit blocked: TypeScript errors found!"
+  exit 1
+fi
+
+# Run linter
+echo "🧹 Running linter..."
+npm run lint
+
+if [ $? -ne 0 ]; then
+  echo "❌ Commit blocked: Linting errors found!"
+  exit 1
+fi
+
+# Check complexity
+echo "📊 Checking code complexity..."
+npm run check:complexity
+
+if [ $? -ne 0 ]; then
+  echo "❌ Commit blocked: Code complexity too high!"
+  exit 1
+fi
+
+# Check test coverage (only for agent implementations)
+if ls src/agents/implementations/*.ts 1> /dev/null 2>&1; then
+  echo "🧪 Checking test coverage..."
+  npm run test:coverage
+  
+  # Extract coverage percentage
+  COVERAGE=$(npm run test:coverage -- --silent | grep "All files" | awk '{print $10}' | sed 's/%//')
+  
+  if [ "$COVERAGE" -lt 95 ]; then
+    echo "❌ Commit blocked: Test coverage is ${COVERAGE}% (minimum 95% required)"
+    exit 1
+  fi
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ All validation checks passed!"
+echo ""

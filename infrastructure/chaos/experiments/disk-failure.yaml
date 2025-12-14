@@ -1,0 +1,73 @@
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-delay
+  namespace: chaos-mesh
+spec:
+  action: latency
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'postgres'
+  volumePath: /var/lib/postgresql/data
+  path: '/var/lib/postgresql/data/**/*'
+  delay: '100ms'
+  percent: 50
+  duration: '5m'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-errno
+  namespace: chaos-mesh
+spec:
+  action: fault
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'postgres'
+  volumePath: /var/lib/postgresql/data
+  path: '/var/lib/postgresql/data/**/*'
+  errno: 5  # EIO - Input/output error
+  percent: 10
+  duration: '1m'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: disk-fill
+  namespace: chaos-mesh
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'api'
+  stressors:
+    hdd:
+      workers: 2
+      size: '10GB'
+  duration: '3m'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-read-error
+  namespace: chaos-mesh
+spec:
+  action: fault
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+  volumePath: /data
+  path: '/data/**/*'
+  errno: 28  # ENOSPC - No space left on device
+  percent: 5
+  duration: '2m'

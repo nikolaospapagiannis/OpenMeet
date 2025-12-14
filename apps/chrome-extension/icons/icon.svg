@@ -1,0 +1,28 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fireflies.ai inspired icon -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#gradient)"/>
+
+  <!-- Microphone icon -->
+  <path d="M64 42C58.4772 42 54 46.4772 54 52V64C54 69.5228 58.4772 74 64 74C69.5228 74 74 69.5228 74 64V52C74 46.4772 69.5228 42 64 42Z" fill="white"/>
+
+  <path d="M48 64C48 64 48 76 64 76C80 76 80 64 80 64" stroke="white" stroke-width="4" stroke-linecap="round"/>
+
+  <path d="M64 76V86" stroke="white" stroke-width="4" stroke-linecap="round"/>
+
+  <path d="M54 86H74" stroke="white" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Audio waves -->
+  <path d="M38 58C38 58 36 61 36 64C36 67 38 70 38 70" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+  <path d="M90 58C90 58 92 61 92 64C92 67 90 70 90 70" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+
+  <path d="M30 52C30 52 28 58 28 64C28 70 30 76 30 76" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+  <path d="M98 52C98 52 100 58 100 64C100 70 98 76 98 76" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+</svg>

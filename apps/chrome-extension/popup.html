@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenMeet Meeting Recorder</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 380px;
+      min-height: 500px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .container {
+      padding: 20px;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      color: white;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo img {
+      width: 32px;
+      height: 32px;
+    }
+    
+    .logo h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .status {
+      padding: 4px 12px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .status.connected {
+      background: #10b981;
+    }
+    
+    .status.recording {
+      background: #ef4444;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .meeting-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .meeting-icon {
+      width: 40px;
+      height: 40px;
+      background: #f3f4f6;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .meeting-details h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+    
+    .meeting-details p {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+    
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .settings-list {
+      list-style: none;
+    }
+    
+    .settings-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .settings-item:last-child {
+      border-bottom: none;
+    }
+    
+    .settings-label {
+      font-size: 14px;
+      color: #374151;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: #d1d5db;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .toggle.active {
+      background: #6366f1;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .toggle.active .toggle-slider {
+      transform: translateX(20px);
+    }
+    
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .input {
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .input:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    
+    .stat {
+      text-align: center;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+    }
+    
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    
+    .footer-link {
+      color: white;
+      text-decoration: none;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .footer-link:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    
+    .version {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .icon {
+      width: 16px;
+      height: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <img src="icons/icon-32.png" alt="OpenMeet">
+        <h1>OpenMeet</h1>
+      </div>
+      <div class="status" id="status">Disconnected</div>
+    </div>
+
+    <!-- Login View -->
+    <div id="login-view" class="card">
+      <h2 style="margin-bottom: 16px; font-size: 16px;">Sign in to get started</h2>
+      <form class="login-form" id="login-form">
+        <input type="email" class="input" placeholder="Email" id="email" required>
+        <input type="password" class="input" placeholder="Password" id="password" required>
+        <button type="submit" class="btn btn-primary">Sign In</button>
+      </form>
+      <p style="text-align: center; margin-top: 12px; font-size: 12px; color: #6b7280;">
+        Don't have an account? 
+        <a href="#" id="signup-link" style="color: #6366f1;">Sign up</a>
+      </p>
+    </div>
+
+    <!-- Main View (shown when authenticated) -->
+    <div id="main-view" class="hidden">
+      <!-- Current Meeting -->
+      <div id="meeting-card" class="card">
+        <div class="meeting-info">
+          <div class="meeting-icon" id="meeting-platform-icon">📹</div>
+          <div class="meeting-details">
+            <h3 id="meeting-title">Ready to Record</h3>
+            <p id="meeting-duration">Click to record current tab</p>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="start-recording" class="btn btn-primary">
+            <span>🔴</span>
+            Start Recording
+          </button>
+          <button id="stop-recording" class="btn btn-danger hidden">
+            <span>⏹</span>
+            Stop Recording
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="card">
+        <h3 style="margin-bottom: 12px; font-size: 14px; font-weight: 600;">Settings</h3>
+        <ul class="settings-list">
+          <li class="settings-item">
+            <span class="settings-label">Auto-record meetings</span>
+            <div class="toggle" id="auto-record-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </li>
+          <li class="settings-item">
+            <span class="settings-label">Show notifications</span>
+            <div class="toggle active" id="notifications-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </li>
+          <li class="settings-item">
+            <span class="settings-label">Save to cloud</span>
+            <div class="toggle" id="cloud-save-toggle">
+              <div class="toggle-slider"></div>
+            </div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Stats -->
+      <div class="card">
+        <h3 style="margin-bottom: 8px; font-size: 14px; font-weight: 600;">Today's Activity</h3>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-value" id="meetings-count">0</div>
+            <div class="stat-label">Meetings</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="hours-recorded">0h</div>
+            <div class="stat-label">Recorded</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="transcripts-count">0</div>
+            <div class="stat-label">Transcripts</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="action-items">0</div>
+            <div class="stat-label">Action Items</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="display: flex; gap: 8px;">
+        <button id="open-dashboard" class="btn btn-secondary" style="flex: 1;">
+          Dashboard
+        </button>
+        <button id="view-settings" class="btn btn-secondary" style="flex: 1;">
+          Settings
+        </button>
+        <button id="logout" class="btn btn-secondary" style="flex: 1;">
+          Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="#" class="footer-link" id="help-link">Help</a>
+        <a href="#" class="footer-link" id="privacy-link">Privacy</a>
+        <a href="#" class="footer-link" id="terms-link">Terms</a>
+      </div>
+      <div class="version">Version 1.0.0</div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

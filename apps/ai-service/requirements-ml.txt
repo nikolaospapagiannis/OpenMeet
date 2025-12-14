@@ -1,0 +1,39 @@
+# ML/AI Requirements for Local Models
+# Install these for local model support
+
+# Core ML frameworks
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Transformer models
+transformers[torch]>=4.35.0
+accelerate>=0.25.0
+optimum>=1.16.0
+
+# Quantization for VRAM savings
+bitsandbytes>=0.41.0
+auto-gptq>=0.5.0
+
+# Fast local Whisper (5x faster than OpenAI API)
+faster-whisper>=0.10.0
+
+# Embeddings and semantic search
+sentence-transformers>=2.2.0
+
+# HuggingFace Hub
+huggingface-hub>=0.19.0
+
+# Additional utilities
+safetensors>=0.4.0
+einops>=0.7.0
+peft>=0.7.0  # For model fine-tuning
+
+# Vision models (optional)
+# Uncomment if using vision capabilities
+# timm>=0.9.0
+# Pillow>=10.0.0
+
+# Audio processing
+# soundfile>=0.12.0
+# librosa>=0.10.0

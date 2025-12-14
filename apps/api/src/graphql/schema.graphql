@@ -1,0 +1,429 @@
+# Nebula AI - Complete GraphQL Schema
+# Real-time meeting intelligence platform
+
+scalar DateTime
+scalar JSON
+
+# ============================================================================
+# ENUMS
+# ============================================================================
+
+enum UserRole {
+  user
+  admin
+  super_admin
+}
+
+enum MeetingStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+  failed
+  processing
+}
+
+enum RecordingSource {
+  bot
+  extension
+  upload
+  api
+  mobile
+}
+
+enum SubscriptionTier {
+  free
+  pro
+  business
+  enterprise
+}
+
+enum SortOrder {
+  asc
+  desc
+}
+
+# ============================================================================
+# TYPES
+# ============================================================================
+
+type User {
+  id: ID!
+  email: String!
+  firstName: String
+  lastName: String
+  fullName: String
+  avatarUrl: String
+  role: UserRole!
+  isActive: Boolean!
+  organization: Organization
+  createdMeetings(limit: Int, offset: Int): [Meeting!]!
+  comments(limit: Int, offset: Int): [Comment!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Organization {
+  id: ID!
+  name: String!
+  slug: String!
+  domain: String
+  logoUrl: String
+  subscriptionTier: SubscriptionTier!
+  settings: JSON
+  users(limit: Int, offset: Int): [User!]!
+  meetings(limit: Int, offset: Int): [Meeting!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Meeting {
+  id: ID!
+  title: String!
+  description: String
+  status: MeetingStatus!
+  scheduledStartAt: DateTime
+  scheduledEndAt: DateTime
+  actualStartAt: DateTime
+  actualEndAt: DateTime
+  duration: Int
+  platform: String
+  meetingUrl: String
+  recordingSource: RecordingSource
+
+  # Relations
+  organization: Organization!
+  user: User!
+  participants: [MeetingParticipant!]!
+  transcript: Transcript
+  transcripts: [Transcript!]!
+  summary: MeetingSummary
+  analytics: MeetingAnalytics
+  comments: [Comment!]!
+  recordings: [MeetingRecording!]!
+
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type MeetingParticipant {
+  id: ID!
+  meeting: Meeting!
+  email: String
+  name: String
+  role: String
+  isOrganizer: Boolean!
+  joinedAt: DateTime
+  leftAt: DateTime
+  talkTimeSeconds: Int
+  createdAt: DateTime!
+}
+
+type MeetingRecording {
+  id: ID!
+  meeting: Meeting!
+  fileUrl: String!
+  fileSizeBytes: String
+  durationSeconds: Int
+  format: String
+  isVideo: Boolean!
+  transcriptionStatus: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Transcript {
+  id: ID!
+  meeting: Meeting!
+  language: String!
+  wordCount: Int
+  confidenceScore: Float
+  isFinal: Boolean!
+  content: String
+  segments: [TranscriptSegment!]
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type TranscriptSegment {
+  id: ID!
+  text: String!
+  speaker: String
+  startTime: Float!
+  endTime: Float!
+  confidence: Float
+  words: [TranscriptWord!]
+}
+
+type TranscriptWord {
+  word: String!
+  startTime: Float!
+  endTime: Float!
+  confidence: Float
+}
+
+type MeetingSummary {
+  id: ID!
+  meeting: Meeting!
+  title: String
+  overview: String
+  keyPoints: [String!]!
+  actionItems: [ActionItem!]!
+  decisions: [Decision!]!
+  questions: [Question!]!
+  aiModel: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type ActionItem {
+  id: ID!
+  text: String!
+  assignee: String
+  dueDate: DateTime
+  completed: Boolean!
+  priority: String
+}
+
+type Decision {
+  id: ID!
+  text: String!
+  timestamp: Float
+  participants: [String!]
+}
+
+type Question {
+  id: ID!
+  text: String!
+  askedBy: String
+  timestamp: Float
+  answered: Boolean
+}
+
+type MeetingAnalytics {
+  id: ID!
+  meeting: Meeting!
+  talkTimeDistribution: JSON
+  sentimentScores: JSON
+  engagementScore: Float
+  interruptionCount: Int
+  questionCount: Int
+  topics: [Topic!]!
+  keywords: [Keyword!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Topic {
+  name: String!
+  confidence: Float!
+  mentions: Int!
+}
+
+type Keyword {
+  word: String!
+  frequency: Int!
+  relevance: Float!
+}
+
+type Comment {
+  id: ID!
+  meeting: Meeting!
+  user: User!
+  content: String!
+  timestampSeconds: Int
+  isResolved: Boolean!
+  resolvedBy: User
+  resolvedAt: DateTime
+  replies: [Comment!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+# ============================================================================
+# PAGINATION
+# ============================================================================
+
+type MeetingConnection {
+  edges: [MeetingEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type MeetingEdge {
+  node: Meeting!
+  cursor: String!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+# ============================================================================
+# INPUTS
+# ============================================================================
+
+input MeetingFilterInput {
+  status: MeetingStatus
+  workspaceId: ID
+  search: String
+  startDate: DateTime
+  endDate: DateTime
+  platform: String
+}
+
+input CreateMeetingInput {
+  title: String!
+  description: String
+  scheduledStartAt: DateTime
+  scheduledEndAt: DateTime
+  platform: String
+  meetingUrl: String
+  workspaceId: ID
+}
+
+input UpdateMeetingInput {
+  title: String
+  description: String
+  status: MeetingStatus
+  scheduledStartAt: DateTime
+  scheduledEndAt: DateTime
+  actualStartAt: DateTime
+  actualEndAt: DateTime
+}
+
+input CreateCommentInput {
+  meetingId: ID!
+  content: String!
+  timestampSeconds: Int
+  parentCommentId: ID
+}
+
+input UpdateCommentInput {
+  content: String
+  isResolved: Boolean
+}
+
+# ============================================================================
+# QUERIES
+# ============================================================================
+
+type Query {
+  # Current user
+  me: User!
+
+  # Users
+  user(id: ID!): User
+  users(limit: Int, offset: Int): [User!]!
+
+  # Organizations
+  organization(id: ID!): Organization
+
+  # Meetings
+  meeting(id: ID!): Meeting
+  meetings(
+    filter: MeetingFilterInput
+    limit: Int
+    offset: Int
+    sortBy: String
+    sortOrder: SortOrder
+  ): MeetingConnection!
+
+  # Transcripts
+  transcript(id: ID!): Transcript
+  meetingTranscript(meetingId: ID!): Transcript
+
+  # Comments
+  meetingComments(meetingId: ID!, limit: Int, offset: Int): [Comment!]!
+
+  # Analytics
+  meetingAnalytics(meetingId: ID!): MeetingAnalytics
+
+  # Search
+  searchMeetings(query: String!, limit: Int, offset: Int): [Meeting!]!
+}
+
+# ============================================================================
+# MUTATIONS
+# ============================================================================
+
+type Mutation {
+  # Meetings
+  createMeeting(input: CreateMeetingInput!): Meeting!
+  updateMeeting(id: ID!, input: UpdateMeetingInput!): Meeting!
+  deleteMeeting(id: ID!): Boolean!
+  startMeeting(id: ID!): Meeting!
+  completeMeeting(id: ID!): Meeting!
+
+  # Comments
+  createComment(input: CreateCommentInput!): Comment!
+  updateComment(id: ID!, input: UpdateCommentInput!): Comment!
+  deleteComment(id: ID!): Boolean!
+  resolveComment(id: ID!): Comment!
+
+  # Transcripts
+  processMeetingTranscript(meetingId: ID!): Transcript!
+  generateMeetingSummary(meetingId: ID!): MeetingSummary!
+}
+
+# ============================================================================
+# SUBSCRIPTIONS (Real-time with Redis)
+# ============================================================================
+
+type Subscription {
+  # Meeting updates - Subscribe to changes for a specific meeting
+  meetingUpdated(meetingId: ID!): MeetingUpdatedPayload!
+
+  # Transcript progress - Live transcription streaming
+  transcriptProgress(meetingId: ID!): TranscriptProgressPayload!
+
+  # Action items - New action items assigned to user
+  actionItemCreated(userId: ID!): ActionItemCreatedPayload!
+
+  # Comments - New comments on a meeting
+  commentAdded(meetingId: ID!): CommentAddedPayload!
+
+  # Meeting status - Real-time status changes
+  meetingStatusChanged(meetingId: ID!): MeetingStatusChangedPayload!
+}
+
+# ============================================================================
+# SUBSCRIPTION PAYLOADS
+# ============================================================================
+
+type MeetingUpdatedPayload {
+  meeting: Meeting!
+  changedFields: [String!]!
+  timestamp: DateTime!
+}
+
+type TranscriptProgressPayload {
+  meetingId: ID!
+  segment: TranscriptSegment!
+  progress: Int!
+  isFinal: Boolean!
+  timestamp: DateTime!
+}
+
+type ActionItemCreatedPayload {
+  actionItem: ActionItem!
+  meeting: Meeting!
+  assignedTo: User!
+  timestamp: DateTime!
+}
+
+type CommentAddedPayload {
+  comment: Comment!
+  meeting: Meeting!
+  timestamp: DateTime!
+}
+
+type MeetingStatusChangedPayload {
+  meeting: Meeting!
+  oldStatus: MeetingStatus!
+  newStatus: MeetingStatus!
+  timestamp: DateTime!
+}

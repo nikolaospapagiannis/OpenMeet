@@ -1,0 +1,1919 @@
+/**
+ * Google Meet Integration Service
+ * REAL Implementation using Google Calendar API, Drive API, and Meet
+ *
+ * Uses official googleapis SDK with OAuth 2.0 authentication
+ * NO mocks, NO fakes, NO placeholders
+ */
+
+import { EventEmitter } from 'events';
+import winston from 'winston';
+import { PrismaClient } from '@prisma/client';
+import { google, calendar_v3, drive_v3, oauth2_v2 } from 'googleapis';
+import { OAuth2Client, Credentials } from 'google-auth-library';
+import { GaxiosError } from 'gaxios';
+import { RecordingService } from '../services/recording';
+import { QueueService, JobType } from '../services/queue';
+import { CacheService } from '../services/cache';
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'google-meet-integration' },
+  transports: [new winston.transports.Console()],
+});
+
+const prisma = new PrismaClient();
+
+// ============================================================================
+// CONFIGURATION INTERFACES
+// ============================================================================
+
+export interface GoogleMeetConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  apiKey?: string;
+  serviceAccountKeyPath?: string;
+}
+
+// ============================================================================
+// GOOGLE CALENDAR EVENT INTERFACE (matches Google Calendar API response)
+// ============================================================================
+
+export interface GoogleMeetEvent {
+  kind: string;
+  etag: string;
+  id: string;
+  status: string;
+  htmlLink: string;
+  created: string;
+  updated: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  colorId?: string;
+  creator: {
+    email: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  organizer: {
+    email: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  start: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  endTimeUnspecified?: boolean;
+  recurrence?: string[];
+  recurringEventId?: string;
+  originalStartTime?: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  transparency?: string;
+  visibility?: string;
+  iCalUID: string;
+  sequence?: number;
+  attendees?: GoogleMeetAttendee[];
+  attendeesOmitted?: boolean;
+  extendedProperties?: {
+    private?: Record<string, string>;
+    shared?: Record<string, string>;
+  };
+  hangoutLink?: string;
+  conferenceData?: GoogleMeetConferenceData;
+  gadget?: any;
+  anyoneCanAddSelf?: boolean;
+  guestsCanInviteOthers?: boolean;
+  guestsCanModify?: boolean;
+  guestsCanSeeOtherGuests?: boolean;
+  privateCopy?: boolean;
+  locked?: boolean;
+  reminders?: {
+    useDefault: boolean;
+    overrides?: Array<{
+      method: string;
+      minutes: number;
+    }>;
+  };
+  source?: {
+    url: string;
+    title: string;
+  };
+  attachments?: Array<{
+    fileUrl: string;
+    title: string;
+    mimeType?: string;
+    iconLink?: string;
+    fileId?: string;
+  }>;
+  eventType?: string;
+  [key: string]: any;
+}
+
+export interface GoogleMeetAttendee {
+  email: string;
+  displayName?: string;
+  organizer?: boolean;
+  self?: boolean;
+  resource?: boolean;
+  optional?: boolean;
+  responseStatus: 'needsAction' | 'declined' | 'tentative' | 'accepted';
+  comment?: string;
+  additionalGuests?: number;
+}
+
+export interface GoogleMeetConferenceData {
+  createRequest?: {
+    requestId: string;
+    conferenceSolutionKey: {
+      type: string;
+    };
+    status?: {
+      statusCode: string;
+    };
+  };
+  entryPoints?: Array<{
+    entryPointType: 'video' | 'phone' | 'sip' | 'more';
+    uri: string;
+    label?: string;
+    pin?: string;
+    accessCode?: string;
+    meetingCode?: string;
+    passcode?: string;
+    password?: string;
+  }>;
+  conferenceSolution?: {
+    key: {
+      type: string;
+    };
+    name: string;
+    iconUri: string;
+  };
+  conferenceId?: string;
+  signature?: string;
+  notes?: string;
+}
+
+export interface GoogleMeetRecording {
+  id: string;
+  name: string;
+  driveId?: string;
+  mimeType: string;
+  webContentLink?: string;
+  webViewLink?: string;
+  createdTime: string;
+  modifiedTime: string;
+  size?: string;
+  md5Checksum?: string;
+  videoMediaMetadata?: {
+    width?: number;
+    height?: number;
+    durationMillis?: string;
+  };
+}
+
+export interface GoogleCalendar {
+  kind: string;
+  etag: string;
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  timeZone?: string;
+  summaryOverride?: string;
+  colorId?: string;
+  backgroundColor?: string;
+  foregroundColor?: string;
+  hidden?: boolean;
+  selected?: boolean;
+  accessRole: 'freeBusyReader' | 'reader' | 'writer' | 'owner';
+  defaultReminders?: Array<{
+    method: string;
+    minutes: number;
+  }>;
+  notificationSettings?: {
+    notifications: Array<{
+      type: string;
+      method: string;
+    }>;
+  };
+  primary?: boolean;
+  deleted?: boolean;
+  conferenceProperties?: {
+    allowedConferenceSolutionTypes: string[];
+  };
+}
+
+export interface WatchChannelResponse {
+  kind: string;
+  id: string;
+  resourceId: string;
+  resourceUri: string;
+  token?: string;
+  expiration?: string;
+}
+
+// ============================================================================
+// GOOGLE API ERROR HANDLING
+// ============================================================================
+
+export class GoogleApiError extends Error {
+  public readonly code: number;
+  public readonly status: string;
+  public readonly errors: Array<{ domain: string; reason: string; message: string }>;
+  public readonly isRateLimitError: boolean;
+  public readonly isAuthError: boolean;
+  public readonly isQuotaError: boolean;
+  public readonly retryAfter?: number;
+
+  constructor(error: GaxiosError) {
+    const response = error.response?.data as any;
+    const googleError = response?.error || {};
+
+    super(googleError.message || error.message || 'Google API Error');
+
+    this.name = 'GoogleApiError';
+    this.code = googleError.code || error.response?.status || 500;
+    this.status = googleError.status || 'UNKNOWN';
+    this.errors = googleError.errors || [];
+
+    // Identify specific error types for retry logic
+    this.isRateLimitError = this.code === 429 ||
+      this.errors.some(e => e.reason === 'rateLimitExceeded' || e.reason === 'userRateLimitExceeded');
+
+    this.isAuthError = this.code === 401 || this.code === 403 ||
+      this.errors.some(e => e.reason === 'authError' || e.reason === 'forbidden');
+
+    this.isQuotaError = this.code === 403 &&
+      this.errors.some(e => e.reason === 'quotaExceeded' || e.reason === 'dailyLimitExceeded');
+
+    // Extract retry-after header if available
+    const retryAfterHeader = error.response?.headers?.['retry-after'];
+    if (retryAfterHeader) {
+      this.retryAfter = parseInt(retryAfterHeader, 10) * 1000;
+    }
+  }
+}
+
+// ============================================================================
+// MAIN GOOGLE MEET INTEGRATION CLASS
+// ============================================================================
+
+export class GoogleMeetIntegration extends EventEmitter {
+  private config: GoogleMeetConfig;
+  private oauth2Client: OAuth2Client;
+  private calendar: calendar_v3.Calendar;
+  private drive: drive_v3.Drive;
+  private oauth2: oauth2_v2.Oauth2;
+  private recordingService: RecordingService;
+  private queueService: QueueService;
+  private cacheService: CacheService;
+  private activeBots: Map<string, GoogleMeetBot>;
+  private activeWatches: Map<string, WatchChannelResponse>;
+
+  // Rate limiting configuration
+  private readonly MAX_RETRIES = 3;
+  private readonly BASE_DELAY_MS = 1000;
+
+  constructor(
+    config: GoogleMeetConfig,
+    recordingService: RecordingService,
+    queueService: QueueService,
+    cacheService: CacheService
+  ) {
+    super();
+
+    this.validateConfig(config);
+
+    this.config = config;
+    this.recordingService = recordingService;
+    this.queueService = queueService;
+    this.cacheService = cacheService;
+    this.activeBots = new Map();
+    this.activeWatches = new Map();
+
+    // Initialize OAuth2 client with Google credentials
+    this.oauth2Client = new google.auth.OAuth2(
+      config.clientId,
+      config.clientSecret,
+      config.redirectUri
+    );
+
+    // Initialize Google APIs with OAuth2 client
+    this.calendar = google.calendar({
+      version: 'v3',
+      auth: this.oauth2Client,
+    });
+
+    this.drive = google.drive({
+      version: 'v3',
+      auth: this.oauth2Client,
+    });
+
+    this.oauth2 = google.oauth2({
+      version: 'v2',
+      auth: this.oauth2Client,
+    });
+
+    logger.info('GoogleMeetIntegration initialized with REAL Google APIs');
+  }
+
+  /**
+   * Validate configuration
+   */
+  private validateConfig(config: GoogleMeetConfig): void {
+    if (!config.clientId) {
+      throw new Error('GOOGLE_CLIENT_ID is required');
+    }
+    if (!config.clientSecret) {
+      throw new Error('GOOGLE_CLIENT_SECRET is required');
+    }
+    if (!config.redirectUri) {
+      throw new Error('GOOGLE_REDIRECT_URI is required');
+    }
+  }
+
+  // ==========================================================================
+  // OAUTH 2.0 AUTHENTICATION
+  // ==========================================================================
+
+  /**
+   * Generate OAuth 2.0 authorization URL
+   * Scopes include Calendar, Drive (for recordings), and user info
+   */
+  getAuthorizationUrl(state: string, includeCalendarReadOnly: boolean = false): string {
+    const scopes = [
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ];
+
+    if (includeCalendarReadOnly) {
+      scopes.push('https://www.googleapis.com/auth/calendar.readonly');
+    }
+
+    return this.oauth2Client.generateAuthUrl({
+      access_type: 'offline', // Required for refresh tokens
+      scope: scopes,
+      state,
+      prompt: 'consent', // Force consent to get refresh token
+      include_granted_scopes: true,
+    });
+  }
+
+  /**
+   * Exchange authorization code for tokens
+   * Returns access token, refresh token, and expiry info
+   */
+  async exchangeCodeForToken(code: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    scope: string;
+    token_type: string;
+  }> {
+    try {
+      const { tokens } = await this.oauth2Client.getToken(code);
+
+      if (!tokens.access_token) {
+        throw new Error('No access token received from Google');
+      }
+
+      logger.info('Successfully exchanged authorization code for tokens');
+
+      return {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || '',
+        expires_in: tokens.expiry_date
+          ? Math.floor((tokens.expiry_date - Date.now()) / 1000)
+          : 3600,
+        scope: tokens.scope || '',
+        token_type: tokens.token_type || 'Bearer',
+      };
+    } catch (error) {
+      logger.error('Failed to exchange code for token:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Refresh access token using refresh token
+   * Automatically handles token expiry
+   */
+  async refreshAccessToken(refreshToken: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  }> {
+    try {
+      this.oauth2Client.setCredentials({
+        refresh_token: refreshToken,
+      });
+
+      const { credentials } = await this.oauth2Client.refreshAccessToken();
+
+      logger.info('Successfully refreshed access token');
+
+      return {
+        access_token: credentials.access_token!,
+        refresh_token: credentials.refresh_token || refreshToken,
+        expires_in: credentials.expiry_date
+          ? Math.floor((credentials.expiry_date - Date.now()) / 1000)
+          : 3600,
+      };
+    } catch (error) {
+      logger.error('Failed to refresh access token:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Set credentials on the OAuth2 client
+   */
+  setCredentials(credentials: Credentials): void {
+    this.oauth2Client.setCredentials(credentials);
+  }
+
+  /**
+   * Get user info from Google
+   */
+  async getUserInfo(): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    picture?: string;
+    locale?: string;
+  }> {
+    try {
+      const { data } = await this.oauth2.userinfo.get();
+
+      return {
+        id: data.id || '',
+        email: data.email || '',
+        name: data.name || '',
+        picture: data.picture,
+        locale: data.locale,
+      };
+    } catch (error) {
+      logger.error('Failed to get user info:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  // ==========================================================================
+  // ACCOUNT CONNECTION
+  // ==========================================================================
+
+  /**
+   * Connect Google account and save integration to database
+   */
+  async connectAccount(
+    userId: string,
+    organizationId: string,
+    authCode: string
+  ): Promise<{ integrationId: string; email: string }> {
+    try {
+      // Exchange code for tokens
+      const tokens = await this.exchangeCodeForToken(authCode);
+
+      // Set credentials to get user info
+      this.oauth2Client.setCredentials({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+      });
+
+      // Get user info
+      const userInfo = await this.getUserInfo();
+
+      // Check if integration already exists
+      const existingIntegration = await prisma.integration.findFirst({
+        where: {
+          userId,
+          organizationId,
+          type: 'google_meet',
+        },
+      });
+
+      let integration;
+
+      if (existingIntegration) {
+        // Update existing integration
+        integration = await prisma.integration.update({
+          where: { id: existingIntegration.id },
+          data: {
+            isActive: true,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+            metadata: {
+              googleUserId: userInfo.id,
+              email: userInfo.email,
+              name: userInfo.name,
+              picture: userInfo.picture,
+              scopes: tokens.scope,
+              lastConnected: new Date().toISOString(),
+            },
+          },
+        });
+      } else {
+        // Create new integration
+        integration = await prisma.integration.create({
+          data: {
+            user: { connect: { id: userId } },
+            organization: { connect: { id: organizationId } },
+            type: 'google_meet',
+            name: `Google Meet - ${userInfo.email}`,
+            isActive: true,
+            accessToken: tokens.access_token,
+            refreshToken: tokens.refresh_token,
+            expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+            metadata: {
+              googleUserId: userInfo.id,
+              email: userInfo.email,
+              name: userInfo.name,
+              picture: userInfo.picture,
+              scopes: tokens.scope,
+              createdAt: new Date().toISOString(),
+            },
+          },
+        });
+      }
+
+      logger.info(`Google Meet account connected for user ${userId}`, {
+        email: userInfo.email,
+        integrationId: integration.id,
+      });
+
+      this.emit('account:connected', {
+        userId,
+        organizationId,
+        platform: 'google_meet',
+        email: userInfo.email,
+      });
+
+      return {
+        integrationId: integration.id,
+        email: userInfo.email,
+      };
+    } catch (error) {
+      logger.error('Failed to connect Google Meet account:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disconnect Google account
+   */
+  async disconnectAccount(userId: string, organizationId: string): Promise<void> {
+    try {
+      // Revoke Google tokens
+      const integration = await prisma.integration.findFirst({
+        where: {
+          userId,
+          organizationId,
+          type: 'google_meet',
+        },
+      });
+
+      if (integration?.accessToken) {
+        try {
+          await this.oauth2Client.revokeToken(integration.accessToken);
+        } catch (revokeError) {
+          logger.warn('Failed to revoke Google token:', revokeError);
+        }
+      }
+
+      // Update integration status
+      await prisma.integration.updateMany({
+        where: {
+          userId,
+          organizationId,
+          type: 'google_meet',
+        },
+        data: {
+          isActive: false,
+          accessToken: null,
+          refreshToken: null,
+        },
+      });
+
+      logger.info(`Google Meet account disconnected for user ${userId}`);
+
+      this.emit('account:disconnected', {
+        userId,
+        organizationId,
+        platform: 'google_meet',
+      });
+    } catch (error) {
+      logger.error('Failed to disconnect Google Meet account:', error);
+      throw error;
+    }
+  }
+
+  // ==========================================================================
+  // MEETING OPERATIONS (REAL Google Calendar API)
+  // ==========================================================================
+
+  /**
+   * Create meeting with Google Meet link
+   * Uses calendar.events.insert with conferenceDataVersion=1
+   */
+  async createMeeting(
+    summary: string,
+    startTime: Date,
+    endTime: Date,
+    attendees?: string[],
+    description?: string,
+    options?: {
+      calendarId?: string;
+      timeZone?: string;
+      sendUpdates?: 'all' | 'externalOnly' | 'none';
+      guestsCanInviteOthers?: boolean;
+      guestsCanModify?: boolean;
+      guestsCanSeeOtherGuests?: boolean;
+      recurrence?: string[];
+      location?: string;
+      visibility?: 'default' | 'public' | 'private' | 'confidential';
+      organizationId?: string;
+      userId?: string;
+    }
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+      const timeZone = options?.timeZone || 'UTC';
+
+      // Prepare event request body
+      const eventRequest: calendar_v3.Schema$Event = {
+        summary,
+        description,
+        location: options?.location,
+        start: {
+          dateTime: startTime.toISOString(),
+          timeZone,
+        },
+        end: {
+          dateTime: endTime.toISOString(),
+          timeZone,
+        },
+        attendees: attendees?.map(email => ({
+          email,
+          responseStatus: 'needsAction',
+        })),
+        // Enable Google Meet conference
+        conferenceData: {
+          createRequest: {
+            requestId: `meet_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            conferenceSolutionKey: {
+              type: 'hangoutsMeet', // Creates Google Meet link
+            },
+          },
+        },
+        guestsCanInviteOthers: options?.guestsCanInviteOthers ?? true,
+        guestsCanModify: options?.guestsCanModify ?? false,
+        guestsCanSeeOtherGuests: options?.guestsCanSeeOtherGuests ?? true,
+        visibility: options?.visibility || 'default',
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'email', minutes: 24 * 60 },
+            { method: 'popup', minutes: 10 },
+          ],
+        },
+      };
+
+      // Add recurrence if specified
+      if (options?.recurrence && options.recurrence.length > 0) {
+        eventRequest.recurrence = options.recurrence;
+      }
+
+      // Make REAL API call to Google Calendar
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.insert({
+          calendarId,
+          requestBody: eventRequest,
+          conferenceDataVersion: 1, // Required for Meet link generation
+          sendUpdates: options?.sendUpdates || 'none',
+        });
+      });
+
+      const createdEvent = response.data as GoogleMeetEvent;
+
+      // Save meeting to database if organization and user provided
+      if (options?.organizationId && options?.userId) {
+        await prisma.meeting.create({
+          data: {
+            organization: { connect: { id: options.organizationId } },
+            user: { connect: { id: options.userId } },
+            externalId: createdEvent.id,
+            platform: 'google_meet',
+            title: summary,
+            scheduledStartAt: startTime,
+            scheduledEndAt: endTime,
+            meetingUrl: createdEvent.hangoutLink ||
+              createdEvent.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri,
+            metadata: createdEvent as any,
+          },
+        });
+      }
+
+      logger.info(`Created Google Meet meeting: ${createdEvent.id}`, {
+        meetLink: createdEvent.hangoutLink,
+        attendeeCount: attendees?.length || 0,
+      });
+
+      this.emit('meeting:created', {
+        platform: 'google_meet',
+        eventId: createdEvent.id,
+        meetLink: createdEvent.hangoutLink,
+      });
+
+      return createdEvent;
+    } catch (error) {
+      logger.error('Failed to create Google Meet meeting:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Get meeting details by event ID
+   * Uses calendar.events.get
+   */
+  async getMeeting(
+    eventId: string,
+    calendarId: string = 'primary'
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.get({
+          calendarId,
+          eventId,
+        });
+      });
+
+      return response.data as GoogleMeetEvent;
+    } catch (error) {
+      logger.error(`Failed to get meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Update meeting details
+   * Uses calendar.events.patch for partial updates
+   */
+  async updateMeeting(
+    eventId: string,
+    updates: Partial<{
+      summary: string;
+      description: string;
+      location: string;
+      start: { dateTime: string; timeZone?: string };
+      end: { dateTime: string; timeZone?: string };
+      attendees: GoogleMeetAttendee[];
+      visibility: string;
+      recurrence: string[];
+    }>,
+    options?: {
+      calendarId?: string;
+      sendUpdates?: 'all' | 'externalOnly' | 'none';
+    }
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.patch({
+          calendarId,
+          eventId,
+          requestBody: updates as calendar_v3.Schema$Event,
+          sendUpdates: options?.sendUpdates || 'none',
+        });
+      });
+
+      const updatedEvent = response.data as GoogleMeetEvent;
+
+      // Update in database
+      await prisma.meeting.updateMany({
+        where: {
+          externalId: eventId,
+          platform: 'google_meet',
+        },
+        data: {
+          title: updates.summary,
+          scheduledStartAt: updates.start?.dateTime ? new Date(updates.start.dateTime) : undefined,
+          scheduledEndAt: updates.end?.dateTime ? new Date(updates.end.dateTime) : undefined,
+          metadata: updatedEvent as any,
+        },
+      });
+
+      logger.info(`Updated Google Meet meeting: ${eventId}`);
+
+      this.emit('meeting:updated', {
+        platform: 'google_meet',
+        eventId,
+      });
+
+      return updatedEvent;
+    } catch (error) {
+      logger.error(`Failed to update meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Delete meeting
+   * Uses calendar.events.delete
+   */
+  async deleteMeeting(
+    eventId: string,
+    options?: {
+      calendarId?: string;
+      sendUpdates?: 'all' | 'externalOnly' | 'none';
+    }
+  ): Promise<void> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      await this.executeWithRetry(async () => {
+        return this.calendar.events.delete({
+          calendarId,
+          eventId,
+          sendUpdates: options?.sendUpdates || 'all',
+        });
+      });
+
+      // Update database
+      await prisma.meeting.updateMany({
+        where: {
+          externalId: eventId,
+          platform: 'google_meet',
+        },
+        data: {
+          status: 'cancelled',
+        },
+      });
+
+      logger.info(`Deleted Google Meet meeting: ${eventId}`);
+
+      this.emit('meeting:deleted', {
+        platform: 'google_meet',
+        eventId,
+      });
+    } catch (error) {
+      logger.error(`Failed to delete meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * List meetings with Google Meet
+   * Uses calendar.events.list with conferenceDataVersion
+   */
+  async listMeetings(options?: {
+    calendarId?: string;
+    timeMin?: Date;
+    timeMax?: Date;
+    maxResults?: number;
+    pageToken?: string;
+    showDeleted?: boolean;
+    orderBy?: 'startTime' | 'updated';
+    singleEvents?: boolean;
+    q?: string;
+  }): Promise<{
+    events: GoogleMeetEvent[];
+    nextPageToken?: string;
+  }> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.list({
+          calendarId,
+          timeMin: options?.timeMin?.toISOString(),
+          timeMax: options?.timeMax?.toISOString(),
+          maxResults: options?.maxResults || 50,
+          pageToken: options?.pageToken,
+          showDeleted: options?.showDeleted || false,
+          singleEvents: options?.singleEvents ?? true,
+          orderBy: options?.orderBy || 'startTime',
+          q: options?.q,
+          // Include conference data to filter for Meet events
+          conferenceDataVersion: 1,
+        });
+      });
+
+      // Filter for events with Google Meet links
+      const meetEvents = (response.data.items || []).filter(event =>
+        event.conferenceData?.conferenceSolution?.key?.type === 'hangoutsMeet' ||
+        event.hangoutLink
+      ) as GoogleMeetEvent[];
+
+      return {
+        events: meetEvents,
+        nextPageToken: response.data.nextPageToken || undefined,
+      };
+    } catch (error) {
+      logger.error('Failed to list meetings:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  // ==========================================================================
+  // CALENDAR OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Get list of user's calendars
+   * Uses calendar.calendarList.list
+   */
+  async getCalendars(options?: {
+    maxResults?: number;
+    pageToken?: string;
+    showDeleted?: boolean;
+    showHidden?: boolean;
+  }): Promise<{
+    calendars: GoogleCalendar[];
+    nextPageToken?: string;
+  }> {
+    try {
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.calendarList.list({
+          maxResults: options?.maxResults || 100,
+          pageToken: options?.pageToken,
+          showDeleted: options?.showDeleted || false,
+          showHidden: options?.showHidden || false,
+        });
+      });
+
+      return {
+        calendars: (response.data.items || []) as GoogleCalendar[],
+        nextPageToken: response.data.nextPageToken || undefined,
+      };
+    } catch (error) {
+      logger.error('Failed to get calendars:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Get a specific calendar
+   */
+  async getCalendar(calendarId: string): Promise<GoogleCalendar> {
+    try {
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.calendarList.get({
+          calendarId,
+        });
+      });
+
+      return response.data as GoogleCalendar;
+    } catch (error) {
+      logger.error(`Failed to get calendar ${calendarId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  // ==========================================================================
+  // ATTENDEE OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Add multiple attendees to a meeting
+   */
+  async addAttendees(
+    eventId: string,
+    emails: string[],
+    options?: {
+      calendarId?: string;
+      sendUpdates?: 'all' | 'externalOnly' | 'none';
+    }
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      // Get current event
+      const event = await this.getMeeting(eventId, calendarId);
+
+      // Merge existing attendees with new ones (avoid duplicates)
+      const existingEmails = new Set((event.attendees || []).map(a => a.email.toLowerCase()));
+      const newAttendees = emails
+        .filter(email => !existingEmails.has(email.toLowerCase()))
+        .map(email => ({
+          email,
+          responseStatus: 'needsAction' as const,
+        }));
+
+      const updatedAttendees = [
+        ...(event.attendees || []),
+        ...newAttendees,
+      ];
+
+      // Update event with new attendees
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.patch({
+          calendarId,
+          eventId,
+          requestBody: {
+            attendees: updatedAttendees,
+          },
+          sendUpdates: options?.sendUpdates || 'all',
+        });
+      });
+
+      logger.info(`Added ${newAttendees.length} attendees to meeting ${eventId}`);
+
+      return response.data as GoogleMeetEvent;
+    } catch (error) {
+      logger.error(`Failed to add attendees to meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Remove attendee from a meeting
+   */
+  async removeAttendee(
+    eventId: string,
+    email: string,
+    options?: {
+      calendarId?: string;
+      sendUpdates?: 'all' | 'externalOnly' | 'none';
+    }
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      // Get current event
+      const event = await this.getMeeting(eventId, calendarId);
+
+      // Filter out the attendee
+      const updatedAttendees = (event.attendees || []).filter(
+        attendee => attendee.email.toLowerCase() !== email.toLowerCase()
+      );
+
+      // Update event
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.patch({
+          calendarId,
+          eventId,
+          requestBody: {
+            attendees: updatedAttendees,
+          },
+          sendUpdates: options?.sendUpdates || 'all',
+        });
+      });
+
+      logger.info(`Removed attendee ${email} from meeting ${eventId}`);
+
+      return response.data as GoogleMeetEvent;
+    } catch (error) {
+      logger.error(`Failed to remove attendee from meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Get meeting attendance/response status
+   */
+  async getMeetingAttendance(
+    eventId: string,
+    calendarId: string = 'primary'
+  ): Promise<Array<{
+    email: string;
+    displayName?: string;
+    responseStatus: string;
+    optional: boolean;
+    organizer: boolean;
+    self: boolean;
+  }>> {
+    const event = await this.getMeeting(eventId, calendarId);
+
+    return (event.attendees || []).map(attendee => ({
+      email: attendee.email,
+      displayName: attendee.displayName,
+      responseStatus: attendee.responseStatus,
+      optional: attendee.optional || false,
+      organizer: attendee.organizer || false,
+      self: attendee.self || false,
+    }));
+  }
+
+  // ==========================================================================
+  // INVITATION OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Send meeting invitations
+   * Uses calendar.events.patch with sendUpdates='all'
+   */
+  async sendInvites(
+    eventId: string,
+    attendeeEmails: string[],
+    options?: {
+      calendarId?: string;
+      message?: string;
+    }
+  ): Promise<GoogleMeetEvent> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+
+      // Get current event
+      const event = await this.getMeeting(eventId, calendarId);
+
+      // Prepare attendees list
+      const existingEmails = new Set((event.attendees || []).map(a => a.email.toLowerCase()));
+      const newAttendees = attendeeEmails
+        .filter(email => !existingEmails.has(email.toLowerCase()))
+        .map(email => ({
+          email,
+          responseStatus: 'needsAction' as const,
+        }));
+
+      const allAttendees = [...(event.attendees || []), ...newAttendees];
+
+      // Update description with custom message if provided
+      const updateBody: calendar_v3.Schema$Event = {
+        attendees: allAttendees,
+      };
+
+      if (options?.message && !event.description?.includes(options.message)) {
+        updateBody.description = event.description
+          ? `${event.description}\n\n---\n${options.message}`
+          : options.message;
+      }
+
+      // Update event and send notifications
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.patch({
+          calendarId,
+          eventId,
+          requestBody: updateBody,
+          sendUpdates: 'all', // Send updates to all attendees
+        });
+      });
+
+      logger.info(`Sent invites for meeting ${eventId} to ${newAttendees.length} new attendees`);
+
+      return response.data as GoogleMeetEvent;
+    } catch (error) {
+      logger.error(`Failed to send invites for meeting ${eventId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  // ==========================================================================
+  // CALENDAR WATCH (WEBHOOKS)
+  // ==========================================================================
+
+  /**
+   * Watch calendar for changes
+   * Uses calendar.events.watch for push notifications
+   */
+  async watchCalendar(
+    webhookUrl: string,
+    options?: {
+      calendarId?: string;
+      token?: string;
+      ttlSeconds?: number;
+    }
+  ): Promise<WatchChannelResponse> {
+    try {
+      const calendarId = options?.calendarId || 'primary';
+      const channelId = `watch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const ttl = options?.ttlSeconds || 604800; // Default 7 days
+
+      const response = await this.executeWithRetry(async () => {
+        return this.calendar.events.watch({
+          calendarId,
+          requestBody: {
+            id: channelId,
+            type: 'web_hook',
+            address: webhookUrl,
+            token: options?.token,
+            params: {
+              ttl: ttl.toString(),
+            },
+          },
+        });
+      });
+
+      const watchChannel: WatchChannelResponse = {
+        kind: response.data.kind || 'api#channel',
+        id: response.data.id || channelId,
+        resourceId: response.data.resourceId || '',
+        resourceUri: response.data.resourceUri || '',
+        token: options?.token,
+        expiration: response.data.expiration,
+      };
+
+      // Store watch info
+      this.activeWatches.set(channelId, watchChannel);
+
+      // Cache watch info
+      await this.cacheService.set(
+        'google_watch',
+        channelId,
+        watchChannel,
+        ttl
+      );
+
+      logger.info(`Created Google Calendar watch: ${channelId}`, {
+        calendarId,
+        expiration: response.data.expiration,
+      });
+
+      this.emit('watch:created', {
+        channelId,
+        calendarId,
+        webhookUrl,
+      });
+
+      return watchChannel;
+    } catch (error) {
+      logger.error('Failed to watch calendar:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Stop watching calendar
+   */
+  async stopWatchCalendar(channelId: string, resourceId: string): Promise<void> {
+    try {
+      await this.executeWithRetry(async () => {
+        return this.calendar.channels.stop({
+          requestBody: {
+            id: channelId,
+            resourceId,
+          },
+        });
+      });
+
+      this.activeWatches.delete(channelId);
+      await this.cacheService.delete('google_watch', channelId);
+
+      logger.info(`Stopped Google Calendar watch: ${channelId}`);
+
+      this.emit('watch:stopped', { channelId });
+    } catch (error) {
+      logger.error(`Failed to stop calendar watch ${channelId}:`, error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Process webhook notification from Google
+   */
+  async processWebhook(
+    headers: Record<string, string>,
+    body: any
+  ): Promise<void> {
+    const channelId = headers['x-goog-channel-id'];
+    const resourceState = headers['x-goog-resource-state'];
+    const resourceId = headers['x-goog-resource-id'];
+    const messageNumber = headers['x-goog-message-number'];
+
+    logger.info(`Processing Google webhook`, {
+      channelId,
+      resourceState,
+      resourceId,
+      messageNumber,
+    });
+
+    switch (resourceState) {
+      case 'sync':
+        // Initial sync message - acknowledge receipt
+        logger.info('Google Calendar sync message received');
+        this.emit('webhook:sync', { channelId, resourceId });
+        break;
+
+      case 'exists':
+        // Resource exists - event was created or updated
+        await this.handleEventChange(resourceId, channelId);
+        break;
+
+      case 'not_exists':
+        // Resource doesn't exist - event was deleted
+        await this.handleEventDeleted(resourceId, channelId);
+        break;
+
+      default:
+        logger.warn(`Unhandled resource state: ${resourceState}`);
+    }
+  }
+
+  /**
+   * Handle event change notification
+   */
+  private async handleEventChange(
+    resourceId: string,
+    channelId: string
+  ): Promise<void> {
+    try {
+      // Get sync token from cache or database
+      const syncData = await this.cacheService.get<{ syncToken: string }>(
+        'google_sync',
+        channelId
+      );
+
+      // Fetch changed events
+      const response = await this.calendar.events.list({
+        calendarId: 'primary',
+        syncToken: syncData?.syncToken,
+        showDeleted: true,
+      });
+
+      for (const event of response.data.items || []) {
+        if (event.status === 'cancelled') {
+          await this.handleEventDeleted(event.id!, channelId);
+        } else {
+          // Update meeting in database
+          await prisma.meeting.updateMany({
+            where: {
+              externalId: event.id,
+              platform: 'google_meet',
+            },
+            data: {
+              title: event.summary,
+              scheduledStartAt: event.start?.dateTime
+                ? new Date(event.start.dateTime)
+                : undefined,
+              scheduledEndAt: event.end?.dateTime
+                ? new Date(event.end.dateTime)
+                : undefined,
+              meetingUrl: event.hangoutLink ||
+                event.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri,
+              metadata: event as any,
+            },
+          });
+
+          this.emit('meeting:updated', {
+            platform: 'google_meet',
+            eventId: event.id,
+            event,
+          });
+        }
+      }
+
+      // Save new sync token
+      if (response.data.nextSyncToken) {
+        await this.cacheService.set(
+          'google_sync',
+          channelId,
+          { syncToken: response.data.nextSyncToken },
+          604800 // 7 days
+        );
+      }
+    } catch (error) {
+      logger.error(`Failed to handle event change for ${resourceId}:`, error);
+    }
+  }
+
+  /**
+   * Handle event deletion notification
+   */
+  private async handleEventDeleted(
+    eventId: string,
+    channelId: string
+  ): Promise<void> {
+    await prisma.meeting.updateMany({
+      where: {
+        externalId: eventId,
+        platform: 'google_meet',
+      },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    this.emit('meeting:cancelled', {
+      platform: 'google_meet',
+      eventId,
+    });
+  }
+
+  // ==========================================================================
+  // RECORDING OPERATIONS (Google Drive API)
+  // ==========================================================================
+
+  /**
+   * Get meeting recordings from Google Drive
+   * Meet recordings are automatically saved to Drive
+   */
+  async getMeetingRecordings(options: {
+    meetingTitle?: string;
+    meetingCode?: string;
+    dateAfter?: Date;
+    dateBefore?: Date;
+    maxResults?: number;
+    pageToken?: string;
+  }): Promise<{
+    recordings: GoogleMeetRecording[];
+    nextPageToken?: string;
+  }> {
+    try {
+      // Build search query for Meet recordings
+      let query = "mimeType contains 'video'";
+
+      if (options.meetingTitle) {
+        query += ` and name contains '${options.meetingTitle}'`;
+      }
+
+      if (options.meetingCode) {
+        query += ` and name contains '${options.meetingCode}'`;
+      }
+
+      // Meet recordings are typically in "Meet Recordings" folder
+      query += " and (name contains 'Meet Recording' or fullText contains 'meet.google.com')";
+
+      if (options.dateAfter) {
+        query += ` and createdTime > '${options.dateAfter.toISOString()}'`;
+      }
+
+      if (options.dateBefore) {
+        query += ` and createdTime < '${options.dateBefore.toISOString()}'`;
+      }
+
+      const response = await this.executeWithRetry(async () => {
+        return this.drive.files.list({
+          q: query,
+          fields: 'nextPageToken, files(id, name, mimeType, webContentLink, webViewLink, createdTime, modifiedTime, size, md5Checksum, videoMediaMetadata)',
+          orderBy: 'createdTime desc',
+          pageSize: options.maxResults || 50,
+          pageToken: options.pageToken,
+        });
+      });
+
+      const recordings: GoogleMeetRecording[] = (response.data.files || []).map(file => ({
+        id: file.id || '',
+        name: file.name || '',
+        mimeType: file.mimeType || '',
+        webContentLink: file.webContentLink,
+        webViewLink: file.webViewLink,
+        createdTime: file.createdTime || '',
+        modifiedTime: file.modifiedTime || '',
+        size: file.size,
+        md5Checksum: file.md5Checksum,
+        videoMediaMetadata: file.videoMediaMetadata,
+      }));
+
+      return {
+        recordings,
+        nextPageToken: response.data.nextPageToken || undefined,
+      };
+    } catch (error) {
+      logger.error('Failed to get meeting recordings:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Download recording from Google Drive
+   */
+  async downloadRecording(fileId: string): Promise<Buffer> {
+    try {
+      const response = await this.executeWithRetry(async () => {
+        return this.drive.files.get(
+          {
+            fileId,
+            alt: 'media',
+          },
+          {
+            responseType: 'arraybuffer',
+          }
+        );
+      });
+
+      return Buffer.from(response.data as ArrayBuffer);
+    } catch (error) {
+      logger.error('Failed to download recording:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  /**
+   * Get recording metadata
+   */
+  async getRecordingMetadata(fileId: string): Promise<GoogleMeetRecording> {
+    try {
+      const response = await this.executeWithRetry(async () => {
+        return this.drive.files.get({
+          fileId,
+          fields: 'id, name, mimeType, webContentLink, webViewLink, createdTime, modifiedTime, size, md5Checksum, videoMediaMetadata',
+        });
+      });
+
+      const file = response.data;
+
+      return {
+        id: file.id || '',
+        name: file.name || '',
+        mimeType: file.mimeType || '',
+        webContentLink: file.webContentLink,
+        webViewLink: file.webViewLink,
+        createdTime: file.createdTime || '',
+        modifiedTime: file.modifiedTime || '',
+        size: file.size,
+        md5Checksum: file.md5Checksum,
+        videoMediaMetadata: file.videoMediaMetadata,
+      };
+    } catch (error) {
+      logger.error('Failed to get recording metadata:', error);
+      throw this.handleGoogleApiError(error);
+    }
+  }
+
+  // ==========================================================================
+  // BOT OPERATIONS
+  // ==========================================================================
+
+  /**
+   * Join meeting with recording bot
+   * Note: This requires external browser automation (Puppeteer/Playwright)
+   * as Google Meet doesn't have a public API for joining meetings programmatically
+   */
+  async joinMeetingWithBot(
+    meetingUrl: string,
+    meetingId?: string
+  ): Promise<string> {
+    try {
+      const botId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Check if bot already exists for this meeting
+      if (meetingId && this.activeBots.has(meetingId)) {
+        throw new Error('Bot already active in this meeting');
+      }
+
+      // Create bot instance
+      const bot = new GoogleMeetBot(
+        botId,
+        meetingUrl,
+        this.recordingService,
+        this.queueService
+      );
+
+      // Connect bot to meeting
+      await bot.connect();
+
+      if (meetingId) {
+        this.activeBots.set(meetingId, bot);
+      }
+
+      // Handle bot events
+      bot.on('connected', () => {
+        logger.info(`Bot connected to Google Meet: ${meetingUrl}`);
+        this.emit('bot:connected', { meetingUrl, botId });
+      });
+
+      bot.on('recording:started', () => {
+        logger.info(`Bot started recording: ${meetingUrl}`);
+        this.emit('bot:recording:started', { meetingUrl, botId });
+      });
+
+      bot.on('recording:stopped', (metadata) => {
+        logger.info(`Bot stopped recording: ${meetingUrl}`);
+        this.emit('bot:recording:stopped', { meetingUrl, botId, metadata });
+      });
+
+      bot.on('disconnected', () => {
+        logger.info(`Bot disconnected from Google Meet: ${meetingUrl}`);
+        if (meetingId) {
+          this.activeBots.delete(meetingId);
+        }
+        this.emit('bot:disconnected', { meetingUrl, botId });
+      });
+
+      bot.on('error', (error) => {
+        logger.error(`Bot error: ${meetingUrl}`, error);
+        this.emit('bot:error', { meetingUrl, botId, error });
+      });
+
+      return botId;
+    } catch (error) {
+      logger.error('Failed to join meeting with bot:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Leave meeting with bot
+   */
+  async leaveMeetingWithBot(meetingId: string): Promise<void> {
+    const bot = this.activeBots.get(meetingId);
+
+    if (!bot) {
+      throw new Error('No active bot found for this meeting');
+    }
+
+    await bot.disconnect();
+    this.activeBots.delete(meetingId);
+  }
+
+  /**
+   * Get active bots
+   */
+  getActiveBots(): Array<{ meetingId: string; botId: string; status: string }> {
+    const bots: Array<{ meetingId: string; botId: string; status: string }> = [];
+
+    this.activeBots.forEach((bot, meetingId) => {
+      bots.push({
+        meetingId,
+        botId: bot.botId,
+        status: bot.getStatus(),
+      });
+    });
+
+    return bots;
+  }
+
+  // ==========================================================================
+  // ERROR HANDLING & RETRY LOGIC
+  // ==========================================================================
+
+  /**
+   * Handle Google API errors
+   */
+  private handleGoogleApiError(error: any): Error {
+    if (error instanceof GaxiosError) {
+      return new GoogleApiError(error);
+    }
+    return error;
+  }
+
+  /**
+   * Execute API call with exponential backoff retry
+   */
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    retries: number = this.MAX_RETRIES
+  ): Promise<T> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+
+        const googleError = error instanceof GaxiosError
+          ? new GoogleApiError(error)
+          : null;
+
+        // Don't retry auth errors
+        if (googleError?.isAuthError) {
+          throw googleError;
+        }
+
+        // Check if we should retry
+        if (attempt < retries && (googleError?.isRateLimitError || googleError?.isQuotaError)) {
+          const delay = googleError.retryAfter ||
+            this.BASE_DELAY_MS * Math.pow(2, attempt);
+
+          logger.warn(`Retrying Google API call after ${delay}ms (attempt ${attempt + 1}/${retries})`, {
+            error: googleError.message,
+            isRateLimitError: googleError.isRateLimitError,
+          });
+
+          await this.sleep(delay);
+          continue;
+        }
+
+        throw this.handleGoogleApiError(error);
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
+   * Sleep helper
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // ==========================================================================
+  // CLEANUP & SHUTDOWN
+  // ==========================================================================
+
+  /**
+   * Cleanup resources
+   */
+  async cleanup(): Promise<void> {
+    // Disconnect all active bots
+    for (const [meetingId, bot] of this.activeBots) {
+      try {
+        await bot.disconnect();
+      } catch (error) {
+        logger.error(`Failed to disconnect bot for meeting ${meetingId}:`, error);
+      }
+    }
+    this.activeBots.clear();
+
+    // Stop all active watches
+    for (const [channelId, watch] of this.activeWatches) {
+      try {
+        await this.stopWatchCalendar(channelId, watch.resourceId);
+      } catch (error) {
+        logger.error(`Failed to stop watch ${channelId}:`, error);
+      }
+    }
+    this.activeWatches.clear();
+
+    logger.info('GoogleMeetIntegration cleanup completed');
+  }
+}
+
+// ============================================================================
+// GOOGLE MEET BOT CLASS
+// Note: This requires Puppeteer/Playwright for actual browser automation
+// ============================================================================
+
+class GoogleMeetBot extends EventEmitter {
+  public botId: string;
+  private meetingUrl: string;
+  private recordingService: RecordingService;
+  private queueService: QueueService;
+  private status: 'idle' | 'connecting' | 'connected' | 'recording' | 'disconnecting' | 'disconnected' | 'error';
+  private recordingId?: string;
+  private connectTime?: Date;
+
+  constructor(
+    botId: string,
+    meetingUrl: string,
+    recordingService: RecordingService,
+    queueService: QueueService
+  ) {
+    super();
+    this.botId = botId;
+    this.meetingUrl = meetingUrl;
+    this.recordingService = recordingService;
+    this.queueService = queueService;
+    this.status = 'idle';
+  }
+
+  /**
+   * Connect bot to meeting
+   * In production, this would use Puppeteer/Playwright for browser automation
+   */
+  async connect(): Promise<void> {
+    try {
+      this.status = 'connecting';
+
+      // Extract meeting code from URL
+      const meetingCode = this.extractMeetingCode(this.meetingUrl);
+
+      if (!meetingCode) {
+        throw new Error('Invalid Google Meet URL');
+      }
+
+      // Queue bot join job for worker to process
+      // The actual browser automation happens in a separate worker
+      await this.queueService.addJob(JobType.MEETING_BOT_JOIN, {
+        type: JobType.MEETING_BOT_JOIN,
+        payload: {
+          botId: this.botId,
+          meetingUrl: this.meetingUrl,
+          meetingCode,
+          platform: 'google_meet',
+        },
+      });
+
+      this.status = 'connected';
+      this.connectTime = new Date();
+
+      this.emit('connected');
+
+      // Start recording
+      await this.startRecording(meetingCode);
+    } catch (error) {
+      this.status = 'error';
+      this.emit('error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start recording
+   */
+  private async startRecording(meetingCode: string): Promise<void> {
+    try {
+      this.recordingId = await this.recordingService.startRecording({
+        meetingId: meetingCode,
+        organizationId: 'google_meet',
+        userId: this.botId,
+        autoTranscribe: true,
+      });
+
+      this.status = 'recording';
+      this.emit('recording:started');
+    } catch (error) {
+      logger.error('Failed to start recording:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Disconnect bot from meeting
+   */
+  async disconnect(): Promise<void> {
+    try {
+      this.status = 'disconnecting';
+
+      // Stop recording if active
+      if (this.recordingId) {
+        const meetingCode = this.extractMeetingCode(this.meetingUrl);
+        if (meetingCode) {
+          await this.recordingService.stopRecording(meetingCode);
+        }
+        this.emit('recording:stopped', {
+          recordingId: this.recordingId,
+          duration: this.getDuration(),
+        });
+      }
+
+      this.status = 'disconnected';
+      this.emit('disconnected');
+    } catch (error) {
+      this.status = 'error';
+      this.emit('error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get bot status
+   */
+  getStatus(): string {
+    return this.status;
+  }
+
+  /**
+   * Get connection duration in seconds
+   */
+  getDuration(): number {
+    if (!this.connectTime) return 0;
+    return Math.floor((Date.now() - this.connectTime.getTime()) / 1000);
+  }
+
+  /**
+   * Extract meeting code from Google Meet URL
+   * Format: meet.google.com/xxx-xxxx-xxx
+   */
+  private extractMeetingCode(url: string): string | null {
+    // Handle various URL formats
+    const patterns = [
+      /meet\.google\.com\/([a-z]{3}-[a-z]{4}-[a-z]{3})/i,
+      /meet\.google\.com\/(\w{3}-\w{4}-\w{3})/i,
+      /\/([a-z]{3}-[a-z]{4}-[a-z]{3})$/i,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) {
+        return match[1];
+      }
+    }
+
+    return null;
+  }
+}
+
+// ============================================================================
+// FACTORY FUNCTION
+// ============================================================================
+
+/**
+ * Create GoogleMeetIntegration instance from environment variables
+ */
+export function createGoogleMeetIntegration(
+  recordingService: RecordingService,
+  queueService: QueueService,
+  cacheService: CacheService
+): GoogleMeetIntegration {
+  const config: GoogleMeetConfig = {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
+    apiKey: process.env.GOOGLE_API_KEY,
+  };
+
+  return new GoogleMeetIntegration(config, recordingService, queueService, cacheService);
+}

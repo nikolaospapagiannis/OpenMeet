@@ -1,0 +1,314 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-config
+  namespace: production
+  labels:
+    app: logstash
+    component: elk
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    path.config: /usr/share/logstash/pipeline
+    xpack.monitoring.enabled: true
+    xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch:9200"]
+    xpack.monitoring.elasticsearch.username: elastic
+    xpack.monitoring.elasticsearch.password: "${ELASTICSEARCH_PASSWORD}"
+    log.level: info
+    pipeline.workers: 4
+    pipeline.batch.size: 125
+    pipeline.batch.delay: 50
+
+  pipelines.yml: |
+    - pipeline.id: beats-input
+      path.config: "/usr/share/logstash/pipeline/beats.conf"
+      pipeline.workers: 2
+    - pipeline.id: api-logs
+      path.config: "/usr/share/logstash/pipeline/api-logs.conf"
+      pipeline.workers: 2
+    - pipeline.id: nginx-logs
+      path.config: "/usr/share/logstash/pipeline/nginx-logs.conf"
+      pipeline.workers: 1
+    - pipeline.id: audit-logs
+      path.config: "/usr/share/logstash/pipeline/audit-logs.conf"
+      pipeline.workers: 1
+
+  beats.conf: |
+    input {
+      beats {
+        port => 5044
+        host => "0.0.0.0"
+        client_inactivity_timeout => 300
+      }
+    }
+
+    filter {
+      # Add correlation ID if not present
+      if ![correlation_id] {
+        uuid {
+          target => "correlation_id"
+        }
+      }
+
+      # Parse JSON logs
+      if [message] =~ /^\{.*\}$/ {
+        json {
+          source => "message"
+          target => "parsed"
+        }
+
+        if "_jsonparsefailure" not in [tags] {
+          mutate {
+            rename => {
+              "[parsed][level]" => "log_level"
+              "[parsed][message]" => "log_message"
+              "[parsed][timestamp]" => "log_timestamp"
+              "[parsed][service]" => "service_name"
+              "[parsed][module]" => "module_name"
+            }
+            remove_field => ["message", "parsed"]
+          }
+        }
+      }
+
+      # Add Kubernetes metadata
+      if [kubernetes] {
+        mutate {
+          add_field => {
+            "k8s_namespace" => "%{[kubernetes][namespace]}"
+            "k8s_pod" => "%{[kubernetes][pod][name]}"
+            "k8s_container" => "%{[kubernetes][container][name]}"
+            "k8s_node" => "%{[kubernetes][node][name]}"
+          }
+        }
+      }
+
+      # Add environment tag
+      mutate {
+        add_field => {
+          "environment" => "production"
+          "[@metadata][index_prefix]" => "logs"
+        }
+        add_tag => ["beats"]
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        user => "elastic"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        index => "logs-beats-%{+YYYY.MM.dd}"
+        manage_template => true
+        template_name => "logs-beats"
+      }
+    }
+
+  api-logs.conf: |
+    input {
+      tcp {
+        port => 5000
+        codec => json_lines
+        type => "api"
+      }
+      http {
+        port => 8080
+        codec => json
+        type => "api"
+      }
+    }
+
+    filter {
+      # Parse API logs
+      if [type] == "api" {
+        # Extract HTTP request details
+        if [req] {
+          mutate {
+            add_field => {
+              "http_method" => "%{[req][method]}"
+              "http_url" => "%{[req][url]}"
+              "http_user_agent" => "%{[req][headers][user-agent]}"
+              "client_ip" => "%{[req][ip]}"
+            }
+          }
+        }
+
+        # Extract response details
+        if [res] {
+          mutate {
+            add_field => {
+              "http_status" => "%{[res][statusCode]}"
+              "response_time_ms" => "%{[responseTime]}"
+            }
+          }
+        }
+
+        # Add error flag
+        if [level] == "error" or [http_status] >= 400 {
+          mutate {
+            add_tag => ["error"]
+          }
+        }
+
+        # Add performance tag
+        if [response_time_ms] {
+          ruby {
+            code => "
+              response_time = event.get('response_time_ms').to_i
+              if response_time > 5000
+                event.tag('slow_response')
+              elsif response_time > 1000
+                event.tag('medium_response')
+              else
+                event.tag('fast_response')
+              end
+            "
+          }
+        }
+      }
+
+      # Add metadata
+      mutate {
+        add_field => {
+          "log_type" => "application"
+          "[@metadata][index_prefix]" => "logs-api"
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        user => "elastic"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        index => "logs-api-%{+YYYY.MM.dd}"
+        manage_template => true
+        template_name => "logs-api"
+      }
+    }
+
+  nginx-logs.conf: |
+    input {
+      tcp {
+        port => 5001
+        codec => json_lines
+        type => "nginx"
+      }
+    }
+
+    filter {
+      if [type] == "nginx" {
+        grok {
+          match => {
+            "message" => '%{IPORHOST:client_ip} - %{DATA:user_name} \[%{HTTPDATE:access_time}\] "%{WORD:http_method} %{DATA:url} HTTP/%{NUMBER:http_version}" %{NUMBER:http_status:int} %{NUMBER:body_bytes_sent:int} "%{DATA:http_referer}" "%{DATA:http_user_agent}"'
+          }
+        }
+
+        # Parse timestamp
+        date {
+          match => ["access_time", "dd/MMM/yyyy:HH:mm:ss Z"]
+          target => "@timestamp"
+        }
+
+        # GeoIP lookup
+        geoip {
+          source => "client_ip"
+          target => "geoip"
+        }
+
+        # User agent parsing
+        useragent {
+          source => "http_user_agent"
+          target => "user_agent"
+        }
+
+        # Add error tag for 4xx and 5xx
+        if [http_status] >= 400 {
+          mutate {
+            add_tag => ["error", "http_error"]
+          }
+        }
+
+        # Add security tag for suspicious activity
+        if [http_status] == 401 or [http_status] == 403 {
+          mutate {
+            add_tag => ["security", "auth_failure"]
+          }
+        }
+      }
+
+      mutate {
+        add_field => {
+          "log_type" => "access"
+          "[@metadata][index_prefix]" => "logs-nginx"
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        user => "elastic"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        index => "logs-nginx-%{+YYYY.MM.dd}"
+        manage_template => true
+        template_name => "logs-nginx"
+      }
+    }
+
+  audit-logs.conf: |
+    input {
+      tcp {
+        port => 5002
+        codec => json_lines
+        type => "audit"
+      }
+    }
+
+    filter {
+      if [type] == "audit" {
+        # Extract audit details
+        mutate {
+          add_field => {
+            "audit_action" => "%{[action]}"
+            "audit_user" => "%{[user][id]}"
+            "audit_user_email" => "%{[user][email]}"
+            "audit_resource" => "%{[resource][type]}"
+            "audit_resource_id" => "%{[resource][id]}"
+          }
+        }
+
+        # Tag sensitive actions
+        if [action] in ["delete", "update_permissions", "export_data"] {
+          mutate {
+            add_tag => ["sensitive_action", "audit_alert"]
+          }
+        }
+
+        # Tag failed actions
+        if [status] == "failure" {
+          mutate {
+            add_tag => ["audit_failure", "security"]
+          }
+        }
+      }
+
+      mutate {
+        add_field => {
+          "log_type" => "audit"
+          "[@metadata][index_prefix]" => "logs-audit"
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        user => "elastic"
+        password => "${ELASTICSEARCH_PASSWORD}"
+        index => "logs-audit-%{+YYYY.MM.dd}"
+        manage_template => true
+        template_name => "logs-audit"
+      }
+    }

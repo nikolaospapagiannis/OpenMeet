@@ -1,0 +1,724 @@
+openapi: 3.0.3
+info:
+  title: OpenMeet Public API
+  version: 1.0.0
+  description: |
+    Enterprise REST API for meeting intelligence platform.
+
+    ## Authentication
+    All endpoints require an API key passed via the `Authorization` header:
+    ```
+    Authorization: Bearer nb_your_api_key_here
+    ```
+
+    ## Rate Limiting
+    Rate limits are tiered based on your subscription:
+    - **Free**: 100 requests/hour
+    - **Pro**: 1,000 requests/hour
+    - **Business**: 5,000 requests/hour
+    - **Enterprise**: 10,000 requests/hour
+
+    Rate limit headers are included in all responses:
+    - `X-RateLimit-Limit`: Your rate limit
+    - `X-RateLimit-Remaining`: Remaining requests in window
+    - `X-RateLimit-Reset`: When the limit resets (ISO 8601)
+
+    ## Webhooks
+    Subscribe to events via webhooks with HMAC-SHA256 signature verification.
+
+  contact:
+    name: API Support
+    email: api@openmeet.com
+    url: https://docs.openmeet.com
+  license:
+    name: Proprietary
+    url: https://openmeet.com/terms
+
+servers:
+  - url: https://api.openmeet.com/api/v1
+    description: Production
+  - url: https://staging-api.openmeet.com/api/v1
+    description: Staging
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Meetings
+    description: Meeting management and retrieval
+  - name: Users
+    description: User management within organization
+  - name: Webhooks
+    description: Webhook configuration and management
+
+paths:
+  /meetings:
+    get:
+      tags: [Meetings]
+      summary: List meetings
+      description: Get paginated list of meetings with filtering and sorting
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled, failed, processing]
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, scheduledStartAt, actualStartAt, title, duration]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meetings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingsListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+    post:
+      tags: [Meetings]
+      summary: Create meeting
+      description: Create a new meeting with optional audio upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMeetingRequest'
+      responses:
+        '201':
+          description: Meeting created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+
+  /meetings/{id}:
+    get:
+      tags: [Meetings]
+      summary: Get meeting
+      description: Retrieve detailed meeting information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meeting retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [Meetings]
+      summary: Delete meeting
+      description: Delete a meeting
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Meeting deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /meetings/{id}/transcript:
+    get:
+      tags: [Meetings]
+      summary: Get transcript
+      description: Retrieve meeting transcript with speaker diarization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, text, vtt, srt]
+            default: json
+      responses:
+        '200':
+          description: Transcript retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscriptResponse'
+            text/plain:
+              schema:
+                type: string
+            text/vtt:
+              schema:
+                type: string
+
+  /meetings/{id}/summary:
+    get:
+      tags: [Meetings]
+      summary: Get AI summary
+      description: Retrieve AI-generated meeting summary
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Summary retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SummaryResponse'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      description: Get paginated list of users in organization
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [user, admin, super_admin]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsersListResponse'
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user
+      description: Retrieve detailed user information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetailResponse'
+
+    patch:
+      tags: [Users]
+      summary: Update user
+      description: Update user information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      summary: List webhooks
+      description: Get paginated list of webhooks
+      responses:
+        '200':
+          description: Webhooks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhooksListResponse'
+
+    post:
+      tags: [Webhooks]
+      summary: Create webhook
+      description: Create a new webhook subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookRequest'
+      responses:
+        '201':
+          description: Webhook created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+
+  /webhooks/{id}:
+    get:
+      tags: [Webhooks]
+      summary: Get webhook
+      description: Retrieve webhook details with statistics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook retrieved successfully
+
+    patch:
+      tags: [Webhooks]
+      summary: Update webhook
+      description: Update webhook configuration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookRequest'
+      responses:
+        '200':
+          description: Webhook updated successfully
+
+    delete:
+      tags: [Webhooks]
+      summary: Delete webhook
+      description: Delete a webhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook deleted successfully
+
+  /webhooks/{id}/test:
+    post:
+      tags: [Webhooks]
+      summary: Test webhook
+      description: Send a test event to webhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test completed
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key
+      description: API key with 'ff_' prefix
+
+  schemas:
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled, failed, processing]
+        scheduledStartAt:
+          type: string
+          format: date-time
+        actualStartAt:
+          type: string
+          format: date-time
+        actualEndAt:
+          type: string
+          format: date-time
+        durationSeconds:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateMeetingRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        scheduledStartAt:
+          type: string
+          format: date-time
+        audioUrl:
+          type: string
+          format: uri
+        metadata:
+          type: object
+
+    MeetingsListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meeting'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    MeetingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Meeting'
+
+    MeetingDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Meeting'
+
+    TranscriptResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            meetingId:
+              type: string
+            transcriptId:
+              type: string
+            segments:
+              type: array
+              items:
+                type: object
+                properties:
+                  speaker:
+                    type: string
+                  text:
+                    type: string
+                  startTime:
+                    type: number
+                  endTime:
+                    type: number
+
+    SummaryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            meetingId:
+              type: string
+            overview:
+              type: string
+            keyPoints:
+              type: array
+              items:
+                type: string
+            actionItems:
+              type: array
+              items:
+                type: object
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [user, admin, super_admin]
+        createdAt:
+          type: string
+          format: date-time
+
+    UsersListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    UserDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/User'
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        avatar:
+          type: string
+          format: uri
+        timezone:
+          type: string
+        language:
+          type: string
+
+    CreateWebhookRequest:
+      type: object
+      required:
+        - url
+        - events
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum:
+              - meeting.created
+              - meeting.updated
+              - meeting.deleted
+              - meeting.completed
+              - transcript.completed
+              - summary.generated
+              - '*'
+        description:
+          type: string
+        secret:
+          type: string
+          minLength: 16
+
+    UpdateWebhookRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        isActive:
+          type: boolean
+
+    WebhookResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            url:
+              type: string
+            events:
+              type: array
+              items:
+                type: string
+            secret:
+              type: string
+              description: Only returned on creation
+
+    WebhooksListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+        nextOffset:
+          type: integer
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+  responses:
+    Unauthorized:
+      description: Authentication required or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    RateLimitExceeded:
+      description: Rate limit exceeded
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        X-RateLimit-Reset:
+          schema:
+            type: string
+            format: date-time
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenMeet | Enterprise Intelligence Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+    <div class="app-layout">
+        
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon"><i class="ph-fill ph-lightning"></i></div>
+                <span class="logo-text">OpenMeet</span>
+            </div>
+
+            <div class="nav-group">
+                <button class="btn-new-meeting">
+                    <i class="ph-bold ph-record"></i> Record
+                </button>
+            </div>
+
+            <nav class="nav-links">
+                <div class="nav-label">WORKSPACE</div>
+                <a href="#" class="nav-item active" onclick="switchTab('meeting-view', this)">
+                    <i class="ph-bold ph-files"></i> Meeting Detail
+                </a>
+                <a href="#" class="nav-item" onclick="switchTab('platform-view', this)">
+                    <i class="ph-bold ph-cpu"></i> Platform & Infra
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph-bold ph-chart-bar"></i> Analytics
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="ph-bold ph-users"></i> Team Channels
+                </a>
+
+                <div class="nav-label">SYSTEM STATUS</div>
+                <div class="status-item"><span class="dot green"></span> K8s Cluster: Healthy</div>
+                <div class="status-item"><span class="dot green"></span> RabbitMQ: Idle</div>
+                <div class="status-item"><span class="dot green"></span> Whisper API: 98ms</div>
+            </nav>
+
+            <div class="user-profile">
+                <div class="avatar">JD</div>
+                <div class="user-info">
+                    <span class="name">John Doe</span>
+                    <span class="role">Enterprise Admin</span>
+                </div>
+                <i class="ph-bold ph-gear"></i>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            
+            <header class="top-bar">
+                <div class="breadcrumbs">
+                    <span class="badge-security"><i class="ph-fill ph-shield-check"></i> SOC2 Type II</span>
+                    <span class="separator">|</span>
+                    <span class="current-page">Q3 Enterprise Strategy</span>
+                </div>
+                <div class="top-actions">
+                    <div class="search-wrapper">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                        <input type="text" placeholder="Semantic Search (e.g. 'Budget decision?')">
+                    </div>
+                    <button class="btn-primary-sm">Share <i class="ph-bold ph-export"></i></button>
+                </div>
+            </header>
+
+            <div id="meeting-view" class="view-container active">
+                <div class="grid-layout">
+                    
+                    <div class="col-main">
+                        <div class="player-card">
+                            <div class="player-header">
+                                <div>
+                                    <h1>Q3 Enterprise Strategy</h1>
+                                    <div class="chips">
+                                        <span class="chip purple"><i class="ph-fill ph-brain"></i> Ensemble Model</span>
+                                        <span class="chip blue">Sales</span>
+                                        <span class="chip gray">45m 12s</span>
+                                    </div>
+                                </div>
+                                <div class="accuracy-badge">
+                                    <span class="val">98%</span>
+                                    <span class="lbl">Accuracy</span>
+                                </div>
+                            </div>
+                            <div class="visualizer">
+                                <button class="play-btn"><i class="ph-fill ph-play"></i></button>
+                                <div class="waveform">
+                                    <div class="bar" style="height:40%"></div><div class="bar" style="height:70%"></div>
+                                    <div class="bar active" style="height:90%"></div><div class="bar" style="height:50%"></div>
+                                    <div class="bar" style="height:30%"></div><div class="bar" style="height:60%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="transcript-box">
+                            <div class="ts-filters">
+                                <button class="filter-btn active">Full Transcript</button>
+                                <button class="filter-btn">Highlights</button>
+                                <button class="filter-btn">Action Items</button>
+                            </div>
+                            <div class="ts-item">
+                                <div class="ts-avatar">SK</div>
+                                <div class="ts-text">
+                                    <div class="ts-meta">Sarah King <span>02:14</span></div>
+                                    <p>Based on the <span class="highlight ai">predictive deal scoring</span>, we're sitting at 85% probability.</p>
+                                </div>
+                            </div>
+                            <div class="ts-item">
+                                <div class="ts-avatar bg-indigo">JD</div>
+                                <div class="ts-text">
+                                    <div class="ts-meta">John Doe <span>02:18</span></div>
+                                    <p>Excellent. I'll trigger the <span class="highlight action">follow-up automation</span> via the API.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-side">
+                        
+                        <div class="ai-widget">
+                            <div class="widget-head"><i class="ph-duotone ph-chart-line-up"></i> Deal Prediction</div>
+                            <div class="score-circle">
+                                <svg viewBox="0 0 36 36" class="circular-chart green">
+                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="circle" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="score-text">
+                                    <span class="big">85</span>
+                                    <span class="small">Probability</span>
+                                </div>
+                            </div>
+                            <div class="insight-text">Likelihood of closing increased by <strong>12%</strong> due to positive budget mention.</div>
+                        </div>
+
+                        <div class="ai-widget">
+                            <div class="widget-head"><i class="ph-duotone ph-smiley"></i> Emotional Journey</div>
+                            <div class="emotion-map">
+                                <div class="emotion-line"></div>
+                                <div class="emotion-point pos" style="left: 20%" title="Excited"></div>
+                                <div class="emotion-point neg" style="left: 50%" title="Concerned"></div>
+                                <div class="emotion-point pos" style="left: 90%" title="Relieved"></div>
+                            </div>
+                            <div class="labels">
+                                <span>Start</span>
+                                <span>End</span>
+                            </div>
+                        </div>
+
+                        <div class="ai-widget">
+                            <div class="widget-head"><i class="ph-duotone ph-graph"></i> Knowledge Graph</div>
+                            <div class="graph-nodes">
+                                <span class="node main">Budget</span>
+                                <span class="line"></span>
+                                <span class="node sub">Sarah</span>
+                                <span class="node sub-2">Q3</span>
+                            </div>
+                            <div class="insight-text small">Linked to 3 past meetings regarding "Enterprise Budget".</div>
+                        </div>
+
+                        <div class="chat-widget">
+                            <div class="chat-head">Ask AI Assistant</div>
+                            <input type="text" placeholder="Ex: What was the action item?">
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div id="platform-view" class="view-container">
+                <div class="platform-grid">
+                    
+                    <div class="tech-card full-width">
+                        <h2><i class="ph-bold ph-tree-structure"></i> System Architecture & Stack</h2>
+                        <div class="stack-visual">
+                            <div class="stack-col">
+                                <h4>Frontend</h4>
+                                <div class="tech-tag"><i class="ph-bold ph-code"></i> Next.js 14</div>
+                                <div class="tech-tag"><i class="ph-bold ph-wifi-high"></i> WebRTC</div>
+                                <div class="tech-tag"><i class="ph-bold ph-paint-brush"></i> Tailwind</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="stack-col">
+                                <h4>Backend API</h4>
+                                <div class="tech-tag"><i class="ph-bold ph-hard-drives"></i> Node 20.x</div>
+                                <div class="tech-tag"><i class="ph-bold ph-database"></i> Postgres</div>
+                                <div class="tech-tag"><i class="ph-bold ph-arrows-split"></i> GraphQL</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="stack-col highlight-col">
+                                <h4>AI Engine</h4>
+                                <div class="tech-tag ai"><i class="ph-bold ph-robot"></i> OpenAI Whisper</div>
+                                <div class="tech-tag ai"><i class="ph-bold ph-brain"></i> GPT-4 API</div>
+                                <div class="tech-tag ai"><i class="ph-bold ph-magic-wand"></i> LangChain</div>
+                            </div>
+                            <div class="arrow">→</div>
+                            <div class="stack-col">
+                                <h4>Infra</h4>
+                                <div class="tech-tag infra"><i class="ph-bold ph-cloud"></i> AWS/Multi-cloud</div>
+                                <div class="tech-tag infra"><i class="ph-bold ph-docker-logo"></i> K8s</div>
+                                <div class="tech-tag infra"><i class="ph-bold ph-queue"></i> RabbitMQ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tech-card">
+                        <h2><i class="ph-bold ph-check-square-offset"></i> Feature Status Matrix</h2>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Feature</th>
+                                    <th>Status</th>
+                                    <th>Complexity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>SSO & MFA Auth</td>
+                                    <td><span class="badge-status ready">Ready</span></td>
+                                    <td>High</td>
+                                </tr>
+                                <tr>
+                                    <td>Real-time STT (100+ Langs)</td>
+                                    <td><span class="badge-status ready">Ready</span></td>
+                                    <td>Very High</td>
+                                </tr>
+                                <tr>
+                                    <td>Emotion Mapping</td>
+                                    <td><span class="badge-status beta">Beta</span></td>
+                                    <td>High</td>
+                                </tr>
+                                <tr>
+                                    <td>Semantic Search</td>
+                                    <td><span class="badge-status ready">Ready</span></td>
+                                    <td>Medium</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="tech-card">
+                        <h2><i class="ph-bold ph-trophy"></i> Competitive Advantage</h2>
+                        <table class="comp-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th class="us">OpenMeet 🚀</th>
+                                    <th>Fireflies</th>
+                                    <th>Otter</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Accuracy</td>
+                                    <td class="us">98% (Ensemble)</td>
+                                    <td>95%</td>
+                                    <td>90%</td>
+                                </tr>
+                                <tr>
+                                    <td>Latency</td>
+                                    <td class="us">&lt;100ms</td>
+                                    <td>Standard</td>
+                                    <td>Standard</td>
+                                </tr>
+                                <tr>
+                                    <td>Video</td>
+                                    <td class="us">All Plans</td>
+                                    <td>Business+</td>
+                                    <td>No</td>
+                                </tr>
+                                <tr>
+                                    <td>Mobile</td>
+                                    <td class="us">Offline Mode</td>
+                                    <td>Online</td>
+                                    <td>Online</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        function switchTab(viewId, btn) {
+            // Hide all views
+            document.querySelectorAll('.view-container').forEach(el => el.classList.remove('active'));
+            // Show target view
+            document.getElementById(viewId).classList.add('active');
+            
+            // Update sidebar active state
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+</html>

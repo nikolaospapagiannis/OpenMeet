@@ -1,0 +1,15 @@
+{
+  "violations": [],
+  "summary": {
+    "total": 0,
+    "blocker": 0,
+    "critical": 0,
+    "major": 0,
+    "minor": 0,
+    "info": 0
+  },
+  "files": {
+    "scanned": 0,
+    "withViolations": 0
+  }
+}

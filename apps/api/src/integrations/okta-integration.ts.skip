@@ -1,0 +1,660 @@
+/**
+ * Okta Integration Service
+ *
+ * Provides complete integration with Okta for:
+ * - User authentication via OAuth 2.0
+ * - Group synchronization
+ * - MFA management
+ * - User provisioning/deprovisioning
+ * - Session management
+ */
+
+import okta from '@okta/okta-sdk-nodejs';
+import { PrismaClient } from '@prisma/client';
+import axios from 'axios';
+
+const prisma = new PrismaClient();
+
+export interface OktaConfig {
+  domain: string;
+  clientId: string;
+  clientSecret: string;
+  apiToken: string;
+}
+
+export interface OktaUser {
+  id: string;
+  status: string;
+  created: string;
+  activated: string | null;
+  statusChanged: string | null;
+  lastLogin: string | null;
+  lastUpdated: string;
+  passwordChanged: string | null;
+  profile: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    login: string;
+    mobilePhone?: string;
+    [key: string]: any;
+  };
+  credentials?: {
+    password?: any;
+    provider?: {
+      type: string;
+      name: string;
+    };
+  };
+  _links: Record<string, any>;
+}
+
+export interface OktaGroup {
+  id: string;
+  created: string;
+  lastUpdated: string;
+  lastMembershipUpdated: string;
+  objectClass: string[];
+  type: string;
+  profile: {
+    name: string;
+    description?: string;
+  };
+  _links: Record<string, any>;
+}
+
+export class OktaIntegrationService {
+  private client: okta.Client | null = null;
+  private config: OktaConfig | null = null;
+
+  /**
+   * Initialize Okta client
+   */
+  async initialize(config: OktaConfig): Promise<void> {
+    this.config = config;
+    this.client = new okta.Client({
+      orgUrl: `https://${config.domain}`,
+      token: config.apiToken,
+    });
+  }
+
+  /**
+   * Get Okta client for organization
+   */
+  private async getClient(organizationId: string): Promise<okta.Client> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.oktaDomain || !ssoConfig.oktaApiToken) {
+      throw new Error('Okta not configured for organization');
+    }
+
+    return new okta.Client({
+      orgUrl: `https://${ssoConfig.oktaDomain}`,
+      token: ssoConfig.oktaApiToken,
+    });
+  }
+
+  /**
+   * Authenticate user with Okta
+   */
+  async authenticateUser(
+    organizationId: string,
+    username: string,
+    password: string
+  ): Promise<{
+    sessionToken: string;
+    user: OktaUser;
+    status: 'SUCCESS' | 'MFA_REQUIRED' | 'MFA_ENROLL';
+    stateToken?: string;
+  }> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.oktaDomain) {
+      throw new Error('Okta not configured');
+    }
+
+    try {
+      const response = await axios.post(
+        `https://${ssoConfig.oktaDomain}/api/v1/authn`,
+        {
+          username,
+          password,
+          options: {
+            multiOptionalFactorEnroll: true,
+            warnBeforePasswordExpired: true,
+          },
+        }
+      );
+
+      const { status, sessionToken, stateToken, _embedded } = response.data;
+
+      if (status === 'SUCCESS') {
+        // Get user details
+        const client = await this.getClient(organizationId);
+        const user = await client.getUser(username) as any as OktaUser;
+
+        return {
+          sessionToken,
+          user,
+          status: 'SUCCESS',
+        };
+      } else if (status === 'MFA_REQUIRED' || status === 'MFA_ENROLL') {
+        return {
+          sessionToken: '',
+          user: _embedded.user,
+          status,
+          stateToken,
+        };
+      }
+
+      throw new Error(`Unexpected authentication status: ${status}`);
+    } catch (error: any) {
+      throw new Error(`Okta authentication failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify MFA token
+   */
+  async verifyMFA(
+    organizationId: string,
+    stateToken: string,
+    factorId: string,
+    passCode: string
+  ): Promise<{
+    sessionToken: string;
+    status: string;
+  }> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.oktaDomain) {
+      throw new Error('Okta not configured');
+    }
+
+    try {
+      const response = await axios.post(
+        `https://${ssoConfig.oktaDomain}/api/v1/authn/factors/${factorId}/verify`,
+        {
+          stateToken,
+          passCode,
+        }
+      );
+
+      return {
+        sessionToken: response.data.sessionToken,
+        status: response.data.status,
+      };
+    } catch (error: any) {
+      throw new Error(`MFA verification failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get user by ID
+   */
+  async getUser(organizationId: string, userId: string): Promise<OktaUser> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any as OktaUser;
+    return user;
+  }
+
+  /**
+   * Get user by email
+   */
+  async getUserByEmail(organizationId: string, email: string): Promise<OktaUser | null> {
+    const client = await this.getClient(organizationId);
+
+    try {
+      const users = await client.listUsers({
+        search: `profile.email eq "${email}"`,
+      }) as any;
+
+      const userList: OktaUser[] = [];
+      await users.each((user: OktaUser) => {
+        userList.push(user);
+      });
+
+      return userList.length > 0 ? userList[0] : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Create user in Okta
+   */
+  async createUser(
+    organizationId: string,
+    userData: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      password?: string;
+      activate?: boolean;
+    }
+  ): Promise<OktaUser> {
+    const client = await this.getClient(organizationId);
+
+    const newUser = {
+      profile: {
+        email: userData.email,
+        login: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+      },
+      credentials: userData.password
+        ? {
+            password: { value: userData.password },
+          }
+        : undefined,
+    };
+
+    const user = await client.createUser(newUser as any, {
+      activate: userData.activate !== false,
+    }) as any as OktaUser;
+
+    return user;
+  }
+
+  /**
+   * Update user in Okta
+   */
+  async updateUser(
+    organizationId: string,
+    userId: string,
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      mobilePhone?: string;
+      [key: string]: any;
+    }
+  ): Promise<OktaUser> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+
+    Object.assign(user.profile, updates);
+    const updatedUser = await user.update() as any as OktaUser;
+
+    return updatedUser;
+  }
+
+  /**
+   * Deactivate user in Okta
+   */
+  async deactivateUser(organizationId: string, userId: string): Promise<void> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+    await user.deactivate();
+  }
+
+  /**
+   * Reactivate user in Okta
+   */
+  async reactivateUser(organizationId: string, userId: string): Promise<void> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+    await user.reactivate({ sendEmail: false });
+  }
+
+  /**
+   * Delete user from Okta
+   */
+  async deleteUser(organizationId: string, userId: string): Promise<void> {
+    const client = await this.getClient(organizationId);
+    await client.deleteUser(userId);
+  }
+
+  /**
+   * Get all groups
+   */
+  async getGroups(organizationId: string): Promise<OktaGroup[]> {
+    const client = await this.getClient(organizationId);
+    const groups = await client.listGroups() as any;
+
+    const groupList: OktaGroup[] = [];
+    await groups.each((group: OktaGroup) => {
+      groupList.push(group);
+    });
+
+    return groupList;
+  }
+
+  /**
+   * Get group by ID
+   */
+  async getGroup(organizationId: string, groupId: string): Promise<OktaGroup> {
+    const client = await this.getClient(organizationId);
+    const group = await client.getGroup(groupId) as any as OktaGroup;
+    return group;
+  }
+
+  /**
+   * Get user groups
+   */
+  async getUserGroups(organizationId: string, userId: string): Promise<OktaGroup[]> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+    const groups = await user.listGroups() as any;
+
+    const groupList: OktaGroup[] = [];
+    await groups.each((group: OktaGroup) => {
+      groupList.push(group);
+    });
+
+    return groupList;
+  }
+
+  /**
+   * Add user to group
+   */
+  async addUserToGroup(
+    organizationId: string,
+    userId: string,
+    groupId: string
+  ): Promise<void> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.oktaDomain || !ssoConfig.oktaApiToken) {
+      throw new Error('Okta not configured');
+    }
+
+    await axios.put(
+      `https://${ssoConfig.oktaDomain}/api/v1/groups/${groupId}/users/${userId}`,
+      {},
+      {
+        headers: {
+          Authorization: `SSWS ${ssoConfig.oktaApiToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+  }
+
+  /**
+   * Remove user from group
+   */
+  async removeUserFromGroup(
+    organizationId: string,
+    userId: string,
+    groupId: string
+  ): Promise<void> {
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig || !ssoConfig.oktaDomain || !ssoConfig.oktaApiToken) {
+      throw new Error('Okta not configured');
+    }
+
+    await axios.delete(
+      `https://${ssoConfig.oktaDomain}/api/v1/groups/${groupId}/users/${userId}`,
+      {
+        headers: {
+          Authorization: `SSWS ${ssoConfig.oktaApiToken}`,
+        },
+      }
+    );
+  }
+
+  /**
+   * Sync all users from Okta to our database
+   */
+  async syncUsers(organizationId: string): Promise<{
+    created: number;
+    updated: number;
+    deactivated: number;
+  }> {
+    const client = await this.getClient(organizationId);
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig) {
+      throw new Error('SSO config not found');
+    }
+
+    const users = await client.listUsers({ limit: 200 }) as any;
+
+    let created = 0;
+    let updated = 0;
+    let deactivated = 0;
+
+    await users.each(async (oktaUser: OktaUser) => {
+      const scimUser = await prisma.sCIMUser.findFirst({
+        where: {
+          ssoConfigId: ssoConfig.id,
+          externalId: oktaUser.id,
+        },
+      });
+
+      if (!scimUser) {
+        // Create new user
+        const user = await prisma.user.create({
+          data: {
+            email: oktaUser.profile.email,
+            firstName: oktaUser.profile.firstName,
+            lastName: oktaUser.profile.lastName,
+            organizationId,
+            emailVerified: true,
+            oauthProvider: 'okta',
+            oauthProviderId: oktaUser.id,
+          },
+        });
+
+        await prisma.sCIMUser.create({
+          data: {
+            ssoConfigId: ssoConfig.id,
+            userId: user.id,
+            externalId: oktaUser.id,
+            userName: oktaUser.profile.login,
+            active: oktaUser.status === 'ACTIVE',
+            givenName: oktaUser.profile.firstName,
+            familyName: oktaUser.profile.lastName,
+            displayName: `${oktaUser.profile.firstName} ${oktaUser.profile.lastName}`,
+            emails: [
+              {
+                value: oktaUser.profile.email,
+                type: 'work',
+                primary: true,
+              },
+            ],
+            rawData: oktaUser as any,
+          },
+        });
+
+        created++;
+      } else {
+        // Update existing user
+        if (scimUser.userId) {
+          await prisma.user.update({
+            where: { id: scimUser.userId },
+            data: {
+              firstName: oktaUser.profile.firstName,
+              lastName: oktaUser.profile.lastName,
+              isActive: oktaUser.status === 'ACTIVE',
+            },
+          });
+        }
+
+        await prisma.sCIMUser.update({
+          where: { id: scimUser.id },
+          data: {
+            active: oktaUser.status === 'ACTIVE',
+            givenName: oktaUser.profile.firstName,
+            familyName: oktaUser.profile.lastName,
+            displayName: `${oktaUser.profile.firstName} ${oktaUser.profile.lastName}`,
+            lastSyncedAt: new Date(),
+            rawData: oktaUser as any,
+          },
+        });
+
+        if (oktaUser.status !== 'ACTIVE') {
+          deactivated++;
+        } else {
+          updated++;
+        }
+      }
+    });
+
+    return { created, updated, deactivated };
+  }
+
+  /**
+   * Sync all groups from Okta
+   */
+  async syncGroups(organizationId: string): Promise<{
+    created: number;
+    updated: number;
+  }> {
+    const client = await this.getClient(organizationId);
+    const ssoConfig = await prisma.sSOConfig.findUnique({
+      where: { organizationId },
+    });
+
+    if (!ssoConfig) {
+      throw new Error('SSO config not found');
+    }
+
+    const groups = await client.listGroups() as any;
+
+    let created = 0;
+    let updated = 0;
+
+    await groups.each(async (oktaGroup: OktaGroup) => {
+      const scimGroup = await prisma.sCIMGroup.findFirst({
+        where: {
+          ssoConfigId: ssoConfig.id,
+          externalId: oktaGroup.id,
+        },
+      });
+
+      // Get group members
+      const group = await client.getGroup(oktaGroup.id) as any;
+      const groupUsers = await group.listUsers() as any;
+      const members: any[] = [];
+
+      await groupUsers.each((user: OktaUser) => {
+        members.push({
+          value: user.id,
+          display: `${user.profile.firstName} ${user.profile.lastName}`,
+          $ref: `Users/${user.id}`,
+        });
+      });
+
+      if (!scimGroup) {
+        await prisma.sCIMGroup.create({
+          data: {
+            ssoConfigId: ssoConfig.id,
+            externalId: oktaGroup.id,
+            displayName: oktaGroup.profile.name,
+            members,
+            rawData: oktaGroup as any,
+          },
+        });
+        created++;
+      } else {
+        await prisma.sCIMGroup.update({
+          where: { id: scimGroup.id },
+          data: {
+            displayName: oktaGroup.profile.name,
+            members,
+            lastSyncedAt: new Date(),
+            rawData: oktaGroup as any,
+          },
+        });
+        updated++;
+      }
+    });
+
+    return { created, updated };
+  }
+
+  /**
+   * List user's MFA factors
+   */
+  async listUserFactors(
+    organizationId: string,
+    userId: string
+  ): Promise<any[]> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+    const factors = await user.listFactors() as any;
+
+    const factorList: any[] = [];
+    await factors.each((factor: any) => {
+      factorList.push(factor);
+    });
+
+    return factorList;
+  }
+
+  /**
+   * Enroll user in MFA
+   */
+  async enrollFactor(
+    organizationId: string,
+    userId: string,
+    factorType: 'sms' | 'call' | 'token:software:totp' | 'push',
+    phoneNumber?: string
+  ): Promise<any> {
+    const client = await this.getClient(organizationId);
+    const user = await client.getUser(userId) as any;
+
+    const factor: any = {
+      factorType,
+      provider: 'OKTA',
+    };
+
+    if (phoneNumber && (factorType === 'sms' || factorType === 'call')) {
+      factor.profile = { phoneNumber };
+    }
+
+    const enrolledFactor = await user.enrollFactor(factor);
+    return enrolledFactor;
+  }
+
+  /**
+   * Test Okta connection
+   */
+  async testConnection(config: OktaConfig): Promise<{
+    success: boolean;
+    message: string;
+    userCount?: number;
+  }> {
+    try {
+      const client = new okta.Client({
+        orgUrl: `https://${config.domain}`,
+        token: config.apiToken,
+      });
+
+      const users = await client.listUsers({ limit: 1 }) as any;
+      let count = 0;
+
+      await users.each(() => {
+        count++;
+      });
+
+      return {
+        success: true,
+        message: 'Connection successful',
+        userCount: count,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+}
+
+export const oktaIntegrationService = new OktaIntegrationService();

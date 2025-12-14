@@ -1,0 +1,19 @@
+# Custom Grok patterns for Nginx logs
+
+# Nginx Combined Log Format
+NGINX_COMBINED %{IPORHOST:client_ip} - %{DATA:user_name} \[%{HTTPDATE:access_time}\] "(?:%{WORD:http_method} %{NOTSPACE:request_uri}(?: HTTP/%{NUMBER:http_version})?|%{DATA:raw_request})" %{NUMBER:http_status:int} %{NUMBER:body_bytes_sent:int} "%{DATA:http_referer}" "%{DATA:http_user_agent}"
+
+# Nginx Error Log
+NGINX_ERROR %{DATA:timestamp} \[%{DATA:severity}\] %{NUMBER:pid}#%{NUMBER:tid}: (\*%{NUMBER:connection_id} )?%{GREEDYDATA:message}
+
+# Nginx Access with Response Time
+NGINX_ACCESS_EXTENDED %{IPORHOST:client_ip} - %{DATA:user_name} \[%{HTTPDATE:access_time}\] "(?:%{WORD:http_method} %{NOTSPACE:request_uri}(?: HTTP/%{NUMBER:http_version})?|%{DATA:raw_request})" %{NUMBER:http_status:int} %{NUMBER:body_bytes_sent:int} "%{DATA:http_referer}" "%{DATA:http_user_agent}" rt=%{NUMBER:request_time:float} uct="%{NUMBER:upstream_connect_time:float}" uht="%{NUMBER:upstream_header_time:float}" urt="%{NUMBER:upstream_response_time:float}"
+
+# Nginx Upstream
+NGINX_UPSTREAM %{WORD:http_method} %{URIPATH:uri}(?:\?%{NOTSPACE:query_string})? HTTP/%{NUMBER:http_version} (?:upstream: %{QS:upstream})?
+
+# Nginx Rate Limiting
+NGINX_RATE_LIMIT limiting requests, excess: %{NUMBER:rate_limit_excess:float} by zone "%{DATA:rate_limit_zone}", client: %{IP:client_ip}, server: %{HOSTNAME:server_name}, request: "%{WORD:http_method} %{URIPATH:request_uri}
+
+# SSL/TLS Handshake
+NGINX_SSL_HANDSHAKE SSL_do_handshake\(\) failed \(SSL: %{GREEDYDATA:ssl_error}\) while SSL handshaking, client: %{IP:client_ip}, server: %{IPORHOST:server}

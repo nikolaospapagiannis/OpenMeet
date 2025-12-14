@@ -1,0 +1,125 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: production
+  labels:
+    app: filebeat
+    component: elk
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    # Container logs from Kubernetes
+    - type: container
+      enabled: true
+      paths:
+        - /var/log/containers/*.log
+      processors:
+        # Parse JSON logs
+        - decode_json_fields:
+            fields: ["message"]
+            target: "json"
+            overwrite_keys: true
+            add_error_key: true
+        # Add Kubernetes metadata
+        - add_kubernetes_metadata:
+            host: ${NODE_NAME}
+            matchers:
+            - logs_path:
+                logs_path: "/var/log/containers/"
+        # Drop unnecessary fields
+        - drop_fields:
+            fields: ["agent", "ecs", "host.name", "input"]
+            ignore_missing: true
+
+    # System logs
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/syslog
+        - /var/log/messages
+      fields:
+        log_type: system
+      fields_under_root: true
+
+    # Authentication logs
+    - type: log
+      enabled: true
+      paths:
+        - /var/log/auth.log
+        - /var/log/secure
+      fields:
+        log_type: auth
+      fields_under_root: true
+
+    # Processors
+    processors:
+      # Add cloud metadata
+      - add_cloud_metadata: ~
+      # Add host metadata
+      - add_host_metadata:
+          netinfo.enabled: true
+      # Add Docker metadata
+      - add_docker_metadata: ~
+      # Add process metadata
+      - add_process_metadata:
+          match_pids: ["process.pid"]
+      # Add environment metadata
+      - add_fields:
+          target: ''
+          fields:
+            environment: production
+            cluster: openmeet-prod
+      # Drop healthcheck logs
+      - drop_event:
+          when:
+            or:
+              - contains:
+                  kubernetes.container.name: "healthcheck"
+              - contains:
+                  message: "healthcheck"
+              - contains:
+                  message: "/health"
+      # Parse timestamp
+      - timestamp:
+          field: json.timestamp
+          layouts:
+            - '2006-01-02T15:04:05.000Z'
+            - '2006-01-02T15:04:05Z'
+          test:
+            - '2023-11-15T12:34:56.789Z'
+
+    # Output to Logstash
+    output.logstash:
+      hosts: ["logstash:5044"]
+      compression_level: 3
+      loadbalance: true
+      worker: 2
+      bulk_max_size: 2048
+      slow_start: true
+
+    # Logging
+    logging.level: info
+    logging.to_files: true
+    logging.files:
+      path: /var/log/filebeat
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+
+    # Monitoring
+    monitoring.enabled: true
+    monitoring.elasticsearch:
+      hosts: ["http://elasticsearch:9200"]
+      username: elastic
+      password: ${ELASTICSEARCH_PASSWORD}
+
+    # HTTP endpoint for monitoring
+    http.enabled: true
+    http.host: 0.0.0.0
+    http.port: 5066
+
+    # Setup
+    setup.ilm.enabled: false
+    setup.template.enabled: false

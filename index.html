@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenMeet | Enterprise Meeting Intelligence</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <div class="logo-icon"><i class="ph-fill ph-lightning"></i></div>
+                <span>OpenMeet</span>
+            </div>
+
+            <div class="nav-links">
+                <a href="#product">Product</a>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#enterprise">Enterprise</a>
+            </div>
+
+            <div class="nav-actions">
+                <a href="#" class="btn-text">Log in</a>
+                <a href="#" class="btn btn-primary">Get Started Free</a>
+            </div>
+
+            <button class="mobile-menu-btn" onclick="toggleMenu()">
+                <i class="ph ph-list"></i>
+            </button>
+        </div>
+        <div class="mobile-menu" id="mobileMenu">
+            <a href="#product">Product</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#" class="btn btn-primary">Get Started Free</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-bg-glow glow-1"></div>
+        <div class="hero-bg-glow glow-2"></div>
+
+        <div class="container hero-content">
+            <div class="badge">
+                <span class="pulsing-dot"><span></span></span>
+                New: Predictive Deal Scoring Live
+            </div>
+
+            <h1>Automate meetings with <br><span class="gradient-text">Hyper-Intelligent AI</span></h1>
+            
+            <p class="hero-sub">
+                Transcribe, summarize, and analyze voice conversations with <strong>98% accuracy</strong>. 
+                The enterprise-grade alternative for Fortune 500 teams.
+            </p>
+
+            <div class="hero-buttons">
+                <a href="#" class="btn btn-dark">
+                    Start for free <i class="ph-bold ph-arrow-right"></i>
+                </a>
+                <a href="#" class="btn btn-outline">
+                    <i class="ph-fill ph-play-circle"></i> See how it works
+                </a>
+            </div>
+
+            <div class="dashboard-preview">
+                <div class="browser-bar">
+                    <div class="dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <div class="address-bar"><i class="ph-fill ph-lock-key"></i> app.openmeet.com/meeting/Q3-Review</div>
+                </div>
+                <div class="app-ui">
+                    <div class="sidebar">
+                        <div class="skeleton-line" style="width: 60%"></div>
+                        <div class="skeleton-block" style="height: 200px"></div>
+                    </div>
+                    <div class="main-view">
+                        <div class="meeting-header">
+                            <div class="avatar-group">
+                                <div class="avatar"></div>
+                                <div class="avatar"></div>
+                            </div>
+                            <div class="meeting-meta">
+                                <div class="skeleton-line" style="width: 150px"></div>
+                                <div class="skeleton-line" style="width: 100px; opacity: 0.5"></div>
+                            </div>
+                        </div>
+                        <div class="transcript-area">
+                            <div class="msg-row">
+                                <div class="avatar-sm"></div>
+                                <div class="msg-bubble"></div>
+                            </div>
+                            <div class="msg-row">
+                                <div class="avatar-sm"></div>
+                                <div class="msg-bubble" style="width: 80%"></div>
+                            </div>
+                            <div class="msg-row">
+                                <div class="avatar-sm"></div>
+                                <div class="msg-bubble" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ai-panel">
+                        <div class="ai-header">
+                            <i class="ph-fill ph-sparkle"></i> AI Summary
+                        </div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line"></div>
+                        <div class="skeleton-line" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="logos-section">
+        <div class="container">
+            <p>TRUSTED BY INNOVATIVE TEAMS AT</p>
+            <div class="logo-grid">
+                <span class="company-logo">ACME Corp</span>
+                <span class="company-logo">GlobalTech</span>
+                <span class="company-logo">OpenMeet</span>
+                <span class="company-logo">FoxRun</span>
+                <span class="company-logo">Circle</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="section-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>More than just transcription</h2>
+                <p>Built on a multi-model ensemble architecture (Whisper + DeepSpeech), we deliver features the competition can't match.</p>
+            </div>
+
+            <div class="bento-grid">
+                <div class="card card-large">
+                    <div class="icon-box"><i class="ph ph-globe"></i></div>
+                    <h3>150+ Languages with Dialect Support</h3>
+                    <p>Our ensemble model detects accents automatically. From French Canadian to Brazilian Portuguese, we catch every nuance.</p>
+                    <div class="tags">
+                        <span>English</span><span>Spanish</span><span>Mandarin</span>
+                        <span>German</span><span class="tag-highlight">+144 more</span>
+                    </div>
+                </div>
+
+                <div class="card card-tall dark-card">
+                    <div class="card-glow"></div>
+                    <i class="ph-fill ph-lightning icon-large"></i>
+                    <h3>Real-Time Processing</h3>
+                    <p>&lt;100ms latency using WebRTC architecture.</p>
+                    <div class="stat-row">
+                        <span>Latency</span>
+                        <span class="stat-value">0.08s</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Accuracy</span>
+                        <span class="stat-value">98.2%</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="icon-box color-teal"><i class="ph ph-chart-bar"></i></div>
+                    <h3>Predictive Deal Scoring</h3>
+                    <p>ML models analyze sentiment to predict deal success probability.</p>
+                </div>
+
+                <div class="card">
+                    <div class="icon-box color-amber"><i class="ph ph-magnifying-glass"></i></div>
+                    <h3>Semantic Search</h3>
+                    <p>Ask "What was the budget decision?" and get the exact moment.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-white">
+        <div class="container">
+            <div class="section-header">
+                <h2>Why teams switch to OpenMeet</h2>
+            </div>
+            <div class="table-wrapper">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Feature</th>
+                            <th class="th-highlight">OpenMeet</th>
+                            <th>Fireflies.ai</th>
+                            <th>Otter.ai</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Accuracy</td>
+                            <td class="td-highlight">98% (Ensemble)</td>
+                            <td>95%</td>
+                            <td>90%</td>
+                        </tr>
+                        <tr>
+                            <td>Languages</td>
+                            <td class="td-highlight">150+ & Dialects</td>
+                            <td>100+</td>
+                            <td>English Only</td>
+                        </tr>
+                        <tr>
+                            <td>Video Recording</td>
+                            <td class="td-highlight">All Plans</td>
+                            <td>Business+</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td>Mobile App</td>
+                            <td class="td-highlight">iOS & Android (Offline)</td>
+                            <td>Yes</td>
+                            <td>iOS Only</td>
+                        </tr>
+                        <tr>
+                            <td>Latency</td>
+                            <td class="td-highlight">&lt;100ms</td>
+                            <td>Standard</td>
+                            <td>Standard</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section id="pricing" class="section-light">
+        <div class="container">
+            <div class="section-header">
+                <h2>Enterprise power, startup pricing</h2>
+                <p>Save up to 30% compared to competitors.</p>
+            </div>
+
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">$0 <span>/mo</span></div>
+                    <p class="price-sub">For individuals.</p>
+                    <a href="#" class="btn btn-outline full-width">Get Started</a>
+                    <ul class="features-list">
+                        <li><i class="ph-fill ph-check-circle"></i> 1000 mins/mo</li>
+                        <li><i class="ph-fill ph-check-circle"></i> 5 users max</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Basic summaries</li>
+                    </ul>
+                </div>
+
+                <div class="pricing-card pro-card">
+                    <div class="top-bar"></div>
+                    <h3>Pro</h3>
+                    <div class="price color-indigo">$8 <span>/user/mo</span></div>
+                    <p class="price-sub">For small teams.</p>
+                    <a href="#" class="btn btn-light-indigo full-width">Start Trial</a>
+                    <ul class="features-list">
+                        <li><i class="ph-fill ph-check-circle"></i> Unlimited Minutes</li>
+                        <li><i class="ph-fill ph-check-circle"></i> AI Action Items</li>
+                        <li><i class="ph-fill ph-check-circle"></i> CRM Integrations</li>
+                    </ul>
+                </div>
+
+                <div class="pricing-card business-card">
+                    <div class="badge-pop">POPULAR</div>
+                    <h3>Business</h3>
+                    <div class="price text-white">$15 <span>/user/mo</span></div>
+                    <p class="price-sub text-light">For growing orgs.</p>
+                    <a href="#" class="btn btn-primary full-width">Get Started</a>
+                    <ul class="features-list text-light">
+                        <li><i class="ph-fill ph-check-circle"></i> Video Recording</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Speaker Analytics</li>
+                        <li><i class="ph-fill ph-check-circle"></i> API Access</li>
+                    </ul>
+                </div>
+
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <div class="price">$29 <span>/user/mo</span></div>
+                    <p class="price-sub">Security & control.</p>
+                    <a href="#" class="btn btn-outline full-width">Contact Sales</a>
+                    <ul class="features-list">
+                        <li><i class="ph-fill ph-check-circle"></i> SSO & MFA</li>
+                        <li><i class="ph-fill ph-check-circle"></i> Dedicated CSM</li>
+                        <li><i class="ph-fill ph-check-circle"></i> HIPAA / SOC2</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <div class="logo-icon"><i class="ph-fill ph-lightning"></i></div>
+                        <span>OpenMeet</span>
+                    </div>
+                    <p>The intelligent meeting assistant that captures, searches, and analyzes your conversations.</p>
+                </div>
+                <div>
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#">Features</a></li>
+                        <li><a href="#">Integrations</a></li>
+                        <li><a href="#">Enterprise</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="#">Documentation</a></li>
+                        <li><a href="#">API Reference</a></li>
+                        <li><a href="#">Blog</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 OpenMeet. All rights reserved.</p>
+                <div class="legal-links">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+        }
+    </script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenMeet | The AI Meeting Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container nav-container">
+            <div class="logo">
+                <div class="logo-icon"><i class="ph-fill ph-lightning"></i></div>
+                <span>OpenMeet</span>
+            </div>
+
+            <ul class="nav-menu">
+                <li class="nav-item dropdown-trigger">
+                    <a href="#product">Product <i class="ph-bold ph-caret-down"></i></a>
+                    
+                    <div class="mega-menu">
+                        <div class="mega-grid">
+                            <div class="mega-col">
+                                <h4 class="mega-title">Core Platform</h4>
+                                <a href="#" class="mega-link">
+                                    <i class="ph-duotone ph-record color-red"></i>
+                                    <div>
+                                        <span class="link-title">Transcription</span>
+                                        <span class="link-desc">98% accurate speech-to-text</span>
+                                    </div>
+                                </a>
+                                <a href="#" class="mega-link">
+                                    <i class="ph-duotone ph-sparkle color-indigo"></i>
+                                    <div>
+                                        <span class="link-title">AI Summaries</span>
+                                        <span class="link-desc">GPT-4 powered notes</span>
+                                    </div>
+                                </a>
+                                <a href="#" class="mega-link">
+                                    <i class="ph-duotone ph-magnifying-glass color-amber"></i>
+                                    <div>
+                                        <span class="link-title">Smart Search</span>
+                                        <span class="link-desc">Find answers in seconds</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="mega-col">
+                                <h4 class="mega-title">Intelligence</h4>
+                                <a href="#" class="mega-link">
+                                    <i class="ph-duotone ph-chart-line-up color-green"></i>
+                                    <div>
+                                        <span class="link-title">Deal Scoring</span>
+                                        <span class="link-desc">Predict revenue outcomes</span>
+                                    </div>
+                                </a>
+                                <a href="#" class="mega-link">
+                                    <i class="ph-duotone ph-users-three color-blue"></i>
+                                    <div>
+                                        <span class="link-title">Speaker Analytics</span>
+                                        <span class="link-desc">Coach your sales team</span>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="mega-featured">
+                                <div class="featured-card">
+                                    <span class="badge-sm">New Feature</span>
+                                    <h4>AskFred AI Assistant</h4>
+                                    <p>Chat with your meetings like you chat with ChatGPT.</p>
+                                    <a href="#" class="btn-link">Try it now &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item"><a href="#features">Features</a></li>
+                <li class="nav-item"><a href="#pricing">Pricing</a></li>
+                <li class="nav-item"><a href="#enterprise">Enterprise</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="#" class="btn-text">Log in</a>
+                <a href="#" class="btn btn-primary">Get Started</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="bg-blob blob-left"></div>
+        <div class="bg-blob blob-right"></div>
+
+        <div class="container hero-container">
+            <div class="hero-text">
+                <div class="hero-badge">
+                    <span class="dot-pulse"></span> 
+                    <span>v2.0 is live: Sentiment Analysis 🚀</span>
+                </div>
+                <h1>
+                    Your meetings, <br>
+                    <span class="text-gradient">Perfectly Recalled.</span>
+                </h1>
+                <p class="hero-sub">
+                    The AI assistant that joins your calls, takes notes, and helps you close deals. 
+                    Integrates with Zoom, Teams, and Google Meet instantly.
+                </p>
+                <div class="hero-btns">
+                    <a href="#" class="btn btn-xl btn-primary">Start for free</a>
+                    <a href="#" class="btn btn-xl btn-white"><i class="ph-fill ph-play-circle"></i> Watch Demo</a>
+                </div>
+                <div class="hero-trust">
+                    <span>Trusted by 10,000+ teams at</span>
+                    <div class="trust-logos">
+                        <strong>Uber</strong> • <strong>Netflix</strong> • <strong>Expedia</strong> • <strong>Slack</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-wrapper">
+                <div class="browser-frame">
+                    <div class="traffic-lights">
+                        <span class="red"></span><span class="yellow"></span><span class="green"></span>
+                    </div>
+                    <div class="url-bar">
+                        <i class="ph-bold ph-lock-key"></i> app.openmeet.com/meeting/sales-demo-q3
+                    </div>
+                </div>
+                
+                <div class="app-layout">
+                    <aside class="app-sidebar">
+                        <div class="sidebar-item active">
+                            <i class="ph-bold ph-notebook"></i> Notebook
+                        </div>
+                        <div class="sidebar-item">
+                            <i class="ph-bold ph-files"></i> All Meetings
+                        </div>
+                        <div class="sidebar-item">
+                            <i class="ph-bold ph-chart-pie-slice"></i> Analytics
+                        </div>
+                        <div class="sidebar-spacer"></div>
+                        <div class="sidebar-item">
+                            <i class="ph-bold ph-gear"></i> Settings
+                        </div>
+                    </aside>
+
+                    <main class="app-main">
+                        <div class="meeting-header-ui">
+                            <div>
+                                <h2>Q3 Sales Demo - Acme Corp</h2>
+                                <div class="meeting-meta">
+                                    <span class="tag">Sales</span>
+                                    <span class="date">Today, 10:00 AM</span>
+                                </div>
+                            </div>
+                            <button class="btn-share"><i class="ph-bold ph-share-network"></i> Share</button>
+                        </div>
+
+                        <div class="audio-player">
+                            <button class="play-btn"><i class="ph-fill ph-play"></i></button>
+                            <div class="waveform">
+                                <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                <span class="active"></span><span></span><span></span>
+                            </div>
+                            <span class="timestamp">12:04 / 45:00</span>
+                        </div>
+
+                        <div class="transcript-feed">
+                            <div class="message-block">
+                                <div class="avatar" style="background: #e0e7ff; color: #4f46e5;">JD</div>
+                                <div class="message-content">
+                                    <div class="message-author">John Doe <span class="time">12:01</span></div>
+                                    <p>So, looking at the budget, do we think we can move forward with the Enterprise plan?</p>
+                                </div>
+                            </div>
+                            <div class="message-block">
+                                <div class="avatar" style="background: #f0fdf4; color: #16a34a;">SK</div>
+                                <div class="message-content">
+                                    <div class="message-author">Sarah King <span class="time">12:02</span></div>
+                                    <p>Actually, yes. <span class="highlight-green">We have allocated $50k for this quarter</span>, so that fits perfectly.</p>
+                                </div>
+                            </div>
+                            <div class="message-block">
+                                <div class="avatar" style="background: #e0e7ff; color: #4f46e5;">JD</div>
+                                <div class="message-content">
+                                    <div class="message-author">John Doe <span class="time">12:03</span></div>
+                                    <p>That's fantastic news. I'll send over the contract by EOD.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+
+                    <aside class="app-intelligence">
+                        <div class="ai-card">
+                            <div class="ai-header">
+                                <i class="ph-duotone ph-sparkle color-indigo"></i> 
+                                <h5>AI Summary</h5>
+                            </div>
+                            <p class="ai-text">The client confirmed budget availability ($50k) for the Enterprise plan. Intent to sign is <strong>High</strong>.</p>
+                        </div>
+
+                        <div class="ai-card">
+                            <div class="ai-header">
+                                <i class="ph-duotone ph-check-square color-green"></i> 
+                                <h5>Action Items</h5>
+                            </div>
+                            <ul class="action-list">
+                                <li>
+                                    <input type="checkbox" checked> 
+                                    <span>Send contract (John)</span>
+                                </li>
+                                <li>
+                                    <input type="checkbox"> 
+                                    <span>Schedule onboarding</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="ai-card">
+                            <div class="ai-header">
+                                <i class="ph-duotone ph-smiley color-amber"></i> 
+                                <h5>Sentiment</h5>
+                            </div>
+                            <div class="sentiment-bar">
+                                <div class="fill" style="width: 85%"></div>
+                            </div>
+                            <div class="sentiment-labels">
+                                <span>Neutral</span>
+                                <span>Positive (85%)</span>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+    </header>
+</body>
+</html>

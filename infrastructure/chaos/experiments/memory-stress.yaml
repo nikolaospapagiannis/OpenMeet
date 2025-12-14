@@ -1,0 +1,55 @@
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-stress
+  namespace: chaos-mesh
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'api'
+  stressors:
+    memory:
+      workers: 4
+      size: '1GB'
+  duration: '5m'
+  scheduler:
+    cron: '@every 4h'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-oom
+  namespace: chaos-mesh
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+    labelSelectors:
+      'app': 'api'
+  stressors:
+    memory:
+      workers: 4
+      size: '2GB'
+      options: ['--vm-hang=120']
+  duration: '2m'
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-leak-simulation
+  namespace: chaos-mesh
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - openmeet-production
+  stressors:
+    memory:
+      workers: 1
+      size: '500MB'
+  duration: '10m'

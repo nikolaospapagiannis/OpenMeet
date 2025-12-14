@@ -1,0 +1,273 @@
+# Artillery Load Test Configuration - Authentication Flow
+# Focus: Authentication endpoint performance and token management
+#
+# Run with: artillery run auth-load-test.yml
+
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Gradual ramp-up for auth endpoints
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm-up: 10 req/sec"
+
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: "Ramp-up: 10 → 50 req/sec"
+
+    - duration: 120
+      arrivalRate: 50
+      name: "Sustained: 50 req/sec"
+
+    - duration: 60
+      arrivalRate: 100
+      name: "Peak: 100 req/sec"
+
+    - duration: 30
+      arrivalRate: 10
+      name: "Cool-down"
+
+  ensure:
+    maxErrorRate: 0.5  # Auth should have very low error rate
+    p95: 300           # Auth should be fast
+    p99: 600
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+scenarios:
+  # Scenario 1: Registration flow (20%)
+  - name: "User Registration"
+    weight: 20
+    flow:
+      # Register new user
+      - post:
+          url: "/api/auth/register"
+          json:
+            email: "loadtest-{{ $randomNumber() }}@example.com"
+            password: "LoadTest123!@#"
+            firstName: "Load"
+            lastName: "Test {{ $randomNumber() }}"
+            organizationName: "Test Org {{ $randomNumber() }}"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+          expect:
+            - statusCode: 201
+            - contentType: json
+            - hasProperty: accessToken
+            - hasProperty: refreshToken
+            - hasProperty: user
+
+      # Verify registration by getting user profile
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: email
+
+  # Scenario 2: Login flow (50%)
+  - name: "User Login"
+    weight: 50
+    flow:
+      # Login with credentials
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: accessToken
+            - hasProperty: refreshToken
+
+      # Verify token works
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+      # Think time - simulate user activity
+      - think: 3
+
+      # Make authenticated request
+      - get:
+          url: "/api/meetings?limit=5"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+  # Scenario 3: Token refresh flow (20%)
+  - name: "Token Refresh"
+    weight: 20
+    flow:
+      # Initial login
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+
+      # Simulate token expiration - refresh token
+      - post:
+          url: "/api/auth/refresh"
+          json:
+            refreshToken: "{{ refreshToken }}"
+          capture:
+            - json: "$.accessToken"
+              as: "newAccessToken"
+            - json: "$.refreshToken"
+              as: "newRefreshToken"
+          expect:
+            - statusCode: 200
+            - hasProperty: accessToken
+
+      # Use new token
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ newAccessToken }}"
+          expect:
+            - statusCode: 200
+
+  # Scenario 4: Logout flow (10%)
+  - name: "User Logout"
+    weight: 10
+    flow:
+      # Login first
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "accessToken"
+            - json: "$.refreshToken"
+              as: "refreshToken"
+
+      # Simulate some activity
+      - get:
+          url: "/api/meetings?limit=5"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+
+      # Logout
+      - post:
+          url: "/api/auth/logout"
+          json:
+            refreshToken: "{{ refreshToken }}"
+          expect:
+            - statusCode: 200
+
+      # Verify token is invalidated (should fail)
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: [401, 403]
+
+  # Scenario 5: Failed authentication (edge cases)
+  - name: "Authentication Failures"
+    weight: 5
+    flow:
+      # Wrong password
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user@example.com"
+            password: "WrongPassword123!"
+          expect:
+            - statusCode: [401, 400]
+
+      # Non-existent user
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "nonexistent-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          expect:
+            - statusCode: [401, 404]
+
+      # Invalid token
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer invalid-token-{{ $randomNumber() }}"
+          expect:
+            - statusCode: [401, 403]
+
+      # Expired refresh token
+      - post:
+          url: "/api/auth/refresh"
+          json:
+            refreshToken: "expired-token-{{ $randomNumber() }}"
+          expect:
+            - statusCode: [401, 400]
+
+  # Scenario 6: Concurrent sessions (stress test)
+  - name: "Multiple Concurrent Sessions"
+    weight: 5
+    flow:
+      # Login from "device 1"
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "token1"
+
+      # Login from "device 2" (same user)
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "test-user-{{ $randomNumber() }}@example.com"
+            password: "TestPassword123!"
+          capture:
+            - json: "$.accessToken"
+              as: "token2"
+
+      # Both tokens should work
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ token1 }}"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/auth/me"
+          headers:
+            Authorization: "Bearer {{ token2 }}"
+          expect:
+            - statusCode: 200
+
+after:
+  flow:
+    - log: "Authentication load test completed"

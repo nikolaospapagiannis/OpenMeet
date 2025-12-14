@@ -1,0 +1,52 @@
+---
+# Headless service for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-headless
+  namespace: production
+  labels:
+    app: elasticsearch
+    component: elk
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: elasticsearch
+    component: elk
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+  - name: transport
+    port: 9300
+    targetPort: 9300
+
+---
+# Client service for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: production
+  labels:
+    app: elasticsearch
+    component: elk
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+spec:
+  type: ClusterIP
+  selector:
+    app: elasticsearch
+    component: elk
+  ports:
+  - name: http
+    port: 9200
+    targetPort: 9200
+    protocol: TCP
+  - name: transport
+    port: 9300
+    targetPort: 9300
+    protocol: TCP
+  sessionAffinity: ClientIP

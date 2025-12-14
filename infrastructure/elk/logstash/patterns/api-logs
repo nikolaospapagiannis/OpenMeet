@@ -1,0 +1,34 @@
+# Custom Grok patterns for API logs
+
+# API Request Pattern
+API_REQUEST %{WORD:http_method} %{URIPATH:request_path}(?: %{NOTSPACE:query_string})?
+
+# API Response Pattern
+API_RESPONSE %{NUMBER:status_code:int} in %{NUMBER:response_time:float}ms
+
+# Correlation ID
+CORRELATION_ID [a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}
+
+# User ID
+USER_ID [a-f0-9]{24}
+
+# API Error Pattern
+API_ERROR %{WORD:error_type}: %{GREEDYDATA:error_message}
+
+# API Full Log
+API_LOG \[%{TIMESTAMP_ISO8601:timestamp}\] \[%{LOGLEVEL:level}\] \[%{DATA:module}\] %{API_REQUEST} - %{API_RESPONSE}(?: - user:%{USER_ID:user_id})?(?: - correlation:%{CORRELATION_ID:correlation_id})?
+
+# JWT Token Pattern
+JWT_TOKEN [A-Za-z0-9-_=]+\.[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.+/=]*
+
+# Email Pattern
+EMAIL_ADDRESS [A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}
+
+# Database Query Pattern
+DB_QUERY (?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\s+.+
+
+# IP with Port
+IP_PORT %{IP:ip}:%{NUMBER:port}
+
+# HTTP Headers
+HTTP_HEADER %{NOTSPACE:header_name}: %{GREEDYDATA:header_value}

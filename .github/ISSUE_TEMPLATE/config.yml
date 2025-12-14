@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/nikolaospapagiannis/openmeet/tree/main/docs
+    about: Check the documentation before opening an issue
+  - name: Discussions
+    url: https://github.com/nikolaospapagiannis/openmeet/discussions
+    about: Ask questions and discuss features
+  - name: Security Issues
+    url: https://github.com/nikolaospapagiannis/openmeet/security/policy
+    about: Report security vulnerabilities privately

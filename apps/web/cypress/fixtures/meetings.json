@@ -1,0 +1,31 @@
+{
+  "meetings": [
+    {
+      "id": "meeting-1",
+      "title": "Team Standup Meeting",
+      "description": "Daily standup with the engineering team",
+      "status": "completed",
+      "duration": 1800,
+      "participants": ["john@example.com", "jane@example.com"],
+      "createdAt": "2024-01-01T10:00:00Z"
+    },
+    {
+      "id": "meeting-2",
+      "title": "Client Presentation",
+      "description": "Q4 roadmap presentation for client",
+      "status": "processing",
+      "duration": 3600,
+      "participants": ["client@example.com", "sales@example.com"],
+      "createdAt": "2024-01-02T14:00:00Z"
+    },
+    {
+      "id": "meeting-3",
+      "title": "1:1 with Manager",
+      "description": "Monthly 1:1 discussion",
+      "status": "completed",
+      "duration": 1800,
+      "participants": ["manager@example.com"],
+      "createdAt": "2024-01-03T16:00:00Z"
+    }
+  ]
+}

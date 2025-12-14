@@ -1,0 +1,28 @@
+# Custom Grok patterns for Error logs
+
+# Stack Trace
+STACK_TRACE (?m)(?:\s+at\s+.+)|(?:\s+\.{3}\s+\d+\s+more)|(?:\s*Caused by:.+)
+
+# JavaScript Error
+JS_ERROR %{WORD:error_type}Error: %{GREEDYDATA:error_message}
+
+# Node.js Error
+NODE_ERROR Error: %{GREEDYDATA:error_message}\n(?:\s+at %{DATA:error_location} \(%{DATA:error_file}:%{NUMBER:error_line:int}:%{NUMBER:error_column:int}\))+
+
+# TypeScript Error
+TS_ERROR %{DATA:error_file}\(%{NUMBER:error_line:int},%{NUMBER:error_column:int}\): error TS%{NUMBER:error_code}: %{GREEDYDATA:error_message}
+
+# Database Error
+DB_ERROR %{WORD:db_type} error: %{GREEDYDATA:error_message}
+
+# HTTP Error
+HTTP_ERROR HTTP %{NUMBER:http_status:int} - %{GREEDYDATA:error_message}
+
+# Validation Error
+VALIDATION_ERROR ValidationError: %{DATA:field_name}: %{GREEDYDATA:validation_message}
+
+# Authentication Error
+AUTH_ERROR (?:Unauthorized|Forbidden|Invalid token|Authentication failed): %{GREEDYDATA:auth_error_message}
+
+# Generic Application Error
+APP_ERROR \[%{TIMESTAMP_ISO8601:timestamp}\] \[ERROR\] \[%{DATA:module}\] %{GREEDYDATA:error_message}(?:\n%{STACK_TRACE:stack_trace})?

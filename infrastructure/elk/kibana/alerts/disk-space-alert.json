@@ -1,0 +1,42 @@
+{
+  "name": "Elasticsearch Disk Space Low",
+  "tags": ["infrastructure", "elasticsearch", "warning"],
+  "rule_type_id": ".es-query",
+  "params": {
+    "size": 100,
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [1],
+    "thresholdComparator": ">",
+    "searchConfiguration": {
+      "index": ".monitoring-es-*",
+      "query": {
+        "query": "node_stats.fs.total.available_in_bytes:[0 TO 10737418240]",
+        "language": "kuery"
+      }
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "actions": [
+    {
+      "id": "slack-connector",
+      "group": "query matched",
+      "params": {
+        "message": "⚠️ Elasticsearch Disk Space Low\n\nOne or more nodes are running low on disk space.\n\n*Time:* {{context.date}}\n\nCheck Elasticsearch cluster health."
+      }
+    },
+    {
+      "id": "email-connector",
+      "group": "query matched",
+      "params": {
+        "to": ["ops@openmeet.com"],
+        "subject": "⚠️ Elasticsearch Disk Space Low",
+        "message": "Elasticsearch nodes are running low on disk space.\n\nTime: {{context.date}}\n\nAction required: Clean up old indices or add storage."
+      }
+    }
+  ],
+  "notify_when": "onActionGroupChange",
+  "throttle": "30m"
+}

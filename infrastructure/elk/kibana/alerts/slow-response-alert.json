@@ -1,0 +1,42 @@
+{
+  "name": "Slow Response Time Alert",
+  "tags": ["performance", "production", "warning"],
+  "rule_type_id": ".es-query",
+  "params": {
+    "size": 100,
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [50],
+    "thresholdComparator": ">",
+    "searchConfiguration": {
+      "index": "logs-api-*",
+      "query": {
+        "query": "response_time_ms:[5000 TO *]",
+        "language": "kuery"
+      }
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "actions": [
+    {
+      "id": "slack-connector",
+      "group": "query matched",
+      "params": {
+        "message": "⚠️ Slow Response Time Alert\n\nMultiple slow requests detected (>5s).\n\n*Count:* {{context.value}}\n*Threshold:* 50\n*Time:* {{context.date}}\n\nCheck performance metrics."
+      }
+    },
+    {
+      "id": "email-connector",
+      "group": "query matched",
+      "params": {
+        "to": ["ops@openmeet.com"],
+        "subject": "⚠️ Performance Alert - Slow Responses",
+        "message": "Multiple slow requests detected.\n\nCount: {{context.value}}\nThreshold: 50 requests >5s\nTime: {{context.date}}"
+      }
+    }
+  ],
+  "notify_when": "onActionGroupChange",
+  "throttle": "15m"
+}

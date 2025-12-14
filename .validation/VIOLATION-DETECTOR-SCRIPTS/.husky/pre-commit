@@ -1,0 +1,112 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# STRICT PRE-COMMIT VALIDATION
+# This hook PREVENTS bad code from being committed
+
+echo "🔍 Running strict pre-commit validation..."
+
+# 1. Run TypeScript check
+echo "📘 Checking TypeScript..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Fix them before committing."
+  exit 1
+fi
+
+# 2. Run linting
+echo "🎨 Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting errors found. Run 'npm run lint:fix' to auto-fix."
+  exit 1
+fi
+
+# 3. Run strict validation
+echo "🚨 Running strict code validation..."
+node scripts/validation/strict-validator.js
+if [ $? -ne 0 ]; then
+  echo "❌ Code validation failed. Fix the issues above."
+  exit 1
+fi
+
+# 4. Check for forbidden patterns
+echo "🔍 Checking for forbidden patterns..."
+FORBIDDEN_PATTERNS=(
+  "console\.(log|error|warn)"
+  "//\s*(TODO|FIXME|HACK)"
+  "\bany\b"
+  "localhost:3000"
+  "localhost:8080"
+  "password.*=.*['\"]"
+  "api[Kk]ey.*=.*['\"]"
+  "secret.*=.*['\"]"
+)
+
+for pattern in "${FORBIDDEN_PATTERNS[@]}"; do
+  git diff --cached --name-only | xargs grep -l "$pattern" 2>/dev/null
+  if [ $? -eq 0 ]; then
+    echo "❌ Forbidden pattern found: $pattern"
+    echo "   Check the files listed above."
+    exit 1
+  fi
+done
+
+# 5. Check file sizes
+echo "📏 Checking file sizes..."
+git diff --cached --name-only | while read file; do
+  if [ -f "$file" ]; then
+    lines=$(wc -l < "$file")
+    if [ $lines -gt 300 ]; then
+      echo "❌ File too large: $file ($lines lines > 300 max)"
+      exit 1
+    fi
+  fi
+done
+
+# 6. Run tests for changed files
+echo "🧪 Running tests..."
+npm run test:changed
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed. Fix them before committing."
+  exit 1
+fi
+
+# 7. Check test coverage
+echo "📊 Checking test coverage..."
+npm run test:coverage -- --silent
+COVERAGE=$(npm run test:coverage -- --silent | grep "All files" | awk '{print $4}' | sed 's/%//')
+if [ "$COVERAGE" -lt 80 ]; then
+  echo "❌ Test coverage too low: ${COVERAGE}% < 80% required"
+  exit 1
+fi
+
+# 8. Security check
+echo "🔒 Running security audit..."
+npm audit --production --audit-level=high
+if [ $? -ne 0 ]; then
+  echo "❌ Security vulnerabilities found. Run 'npm audit fix'"
+  exit 1
+fi
+
+# 9. Check for duplicate code
+echo "🔍 Checking for duplicate code..."
+npx jscpd src --min-lines 5 --reporters console --silent
+if [ $? -ne 0 ]; then
+  echo "❌ Duplicate code detected. Extract common functionality."
+  exit 1
+fi
+
+# 10. Validate commit message
+echo "📝 Validating commit message..."
+commit_regex='^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .{1,50}'
+commit_msg=$(git log -1 --pretty=%B)
+if ! [[ $commit_msg =~ $commit_regex ]]; then
+  echo "❌ Invalid commit message format."
+  echo "   Format: <type>(<scope>): <subject>"
+  echo "   Example: feat(auth): add user registration"
+  echo "   Types: feat, fix, docs, style, refactor, test, chore"
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"

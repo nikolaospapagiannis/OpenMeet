@@ -1,0 +1,142 @@
+# Search Load Test - 2000 Concurrent Searches
+# Tests full-text search, filters, and Elasticsearch performance
+
+config:
+  target: "http://localhost:4000"
+  phases:
+    # Simulate 2000 concurrent search queries
+    - duration: 30
+      arrivalRate: 100
+      name: "Search warm-up"
+    - duration: 180
+      arrivalRate: 200
+      name: "2000 concurrent searches"
+    - duration: 120
+      arrivalRate: 300
+      name: "Peak search load"
+    - duration: 60
+      arrivalRate: 100
+      name: "Cool-down"
+
+  ensure:
+    maxErrorRate: 1
+    p95: 100 # Search should be very fast with proper indexing
+    p99: 250
+
+  plugins:
+    metrics-by-endpoint: {}
+    expect: {}
+
+  payload:
+    path: "../payloads/search-queries.csv"
+    fields:
+      - "searchTerm"
+      - "category"
+
+  processor: "../processors/search-processor.js"
+
+scenarios:
+  - name: "Full-Text Meeting Search"
+    weight: 40
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/meetings/search"
+          qs:
+            q: "{{ searchTerm }}"
+            limit: 20
+            page: 1
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+            - contentType: json
+          capture:
+            - json: "$.total"
+              as: "searchTotal"
+
+      - think: 0.5
+
+  - name: "Transcription Search"
+    weight: 35
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/transcriptions/search"
+          qs:
+            q: "{{ searchTerm }}"
+            fuzzy: true
+            limit: 50
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Advanced Filtered Search"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      - get:
+          url: "/api/meetings/search"
+          qs:
+            q: "{{ searchTerm }}"
+            category: "{{ category }}"
+            startDate: "2024-01-01"
+            endDate: "2025-12-31"
+            minDuration: 600
+            maxDuration: 3600
+            tags: "important,client"
+            limit: 20
+          headers:
+            Authorization: "Bearer {{ token }}"
+          expect:
+            - statusCode: [200, 401]
+
+  - name: "Autocomplete Search"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/login"
+          json:
+            email: "admin@example.com"
+            password: "AdminPass123!"
+          capture:
+            - json: "$.token"
+              as: "token"
+
+      # Simulate typing - progressive searches
+      - loop:
+          - get:
+              url: "/api/meetings/autocomplete"
+              qs:
+                q: "{{ searchTerm }}"
+                limit: 10
+              headers:
+                Authorization: "Bearer {{ token }}"
+              expect:
+                - statusCode: [200, 401]
+        count: 3

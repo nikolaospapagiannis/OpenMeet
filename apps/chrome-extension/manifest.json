@@ -1,0 +1,99 @@
+{
+  "manifest_version": 3,
+  "name": "OpenMeet Meeting Recorder",
+  "version": "1.0.0",
+  "description": "Automatically record and transcribe your web meetings from Google Meet, Zoom, and other platforms",
+  "author": "OpenMeet",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "scripting",
+    "notifications",
+    "webRequest",
+    "cookies",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://meet.google.com/*",
+    "https://*.zoom.us/*",
+    "https://teams.microsoft.com/*",
+    "https://*.webex.com/*",
+    "https://*.gotomeeting.com/*",
+    "https://*.whereby.com/*",
+    "https://*.skype.com/*",
+    "https://*.discord.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*"
+      ],
+      "js": [
+        "content-scripts/google-meet.js"
+      ],
+      "css": [
+        "styles/overlay.css"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://*.zoom.us/*"
+      ],
+      "js": [
+        "content-scripts/zoom.js"
+      ],
+      "css": [
+        "styles/overlay.css"
+      ],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://teams.microsoft.com/*"
+      ],
+      "js": [
+        "content-scripts/teams.js"
+      ],
+      "css": [
+        "styles/overlay.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "config.js",
+        "scripts/inject.js",
+        "styles/overlay.css",
+        "icons/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

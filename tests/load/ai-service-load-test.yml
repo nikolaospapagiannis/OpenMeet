@@ -1,0 +1,270 @@
+# Artillery Load Test Configuration - AI Service (Python FastAPI)
+# Focus: Transcription, summarization, and sentiment analysis endpoints
+#
+# Run with: artillery run ai-service-load-test.yml
+
+config:
+  target: "http://localhost:8000"  # AI service port
+  phases:
+    # AI operations are compute-intensive, so lower concurrency
+    - duration: 60
+      arrivalRate: 2
+      name: "Warm-up: 2 req/sec"
+
+    - duration: 120
+      arrivalRate: 2
+      rampTo: 5
+      name: "Ramp-up: 2 → 5 req/sec"
+
+    - duration: 180
+      arrivalRate: 5
+      name: "Sustained: 5 req/sec"
+
+    - duration: 60
+      arrivalRate: 10
+      name: "Peak: 10 req/sec"
+
+    - duration: 30
+      arrivalRate: 2
+      name: "Cool-down"
+
+  ensure:
+    maxErrorRate: 2     # Allow slightly higher error rate for AI (OpenAI API failures)
+    p95: 5000           # AI operations are slower (5 seconds)
+    p99: 10000          # 99th percentile 10 seconds
+
+  plugins:
+    expect: {}
+    metrics-by-endpoint: {}
+
+  http:
+    timeout: 30  # AI operations need longer timeout
+
+scenarios:
+  # Scenario 1: Health check (10%)
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: status
+
+      - get:
+          url: "/metrics"
+          expect:
+            - statusCode: 200
+
+  # Scenario 2: Transcription service (40%)
+  - name: "Audio Transcription"
+    weight: 40
+    flow:
+      # Transcribe short audio file
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            audio_url: "https://example.com/test-audio-{{ $randomNumber() }}.mp3"
+            language: "en"
+            enable_diarization: true
+            enable_timestamps: true
+          capture:
+            - json: "$.transcription_id"
+              as: "transcriptionId"
+          expect:
+            - statusCode: [200, 400]  # 400 if audio URL invalid
+            - contentType: json
+
+      # If successful, verify transcription
+      - get:
+          url: "/api/v1/transcribe/{{ transcriptionId }}"
+          ifTrue: "transcriptionId"
+          expect:
+            - statusCode: [200, 404]
+
+  # Scenario 3: Summarization service (30%)
+  - name: "Text Summarization"
+    weight: 30
+    flow:
+      # Summarize meeting transcript
+      - post:
+          url: "/api/v1/summarize"
+          json:
+            text: |
+              This is a test meeting transcript for load testing purposes.
+              Team discussed Q4 goals and priorities. John mentioned the need
+              to improve customer satisfaction metrics. Sarah proposed a new
+              onboarding process. Mike agreed to review the analytics dashboard.
+              Action items: 1) John to send survey, 2) Sarah to draft process doc,
+              3) Mike to prepare dashboard demo. Next meeting scheduled for next week.
+            format: "structured"
+            max_length: 200
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: summary
+            - hasProperty: key_points
+            - hasProperty: action_items
+
+      # Long text summarization
+      - post:
+          url: "/api/v1/summarize"
+          json:
+            text: |
+              {{ $randomString() }} This is a much longer transcript for testing
+              summarization with more content. The team met to discuss strategic
+              initiatives for the upcoming quarter. Multiple stakeholders presented
+              their proposals and concerns. Budget allocations were debated extensively.
+              Technical architecture decisions were reviewed. Customer feedback was
+              analyzed in detail. Marketing strategies were proposed and evaluated.
+              Sales targets were set and agreed upon. HR policies were updated.
+              Compliance requirements were addressed. Security measures were enhanced.
+            format: "bullet_points"
+            max_length: 300
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  # Scenario 4: Sentiment analysis (20%)
+  - name: "Sentiment Analysis"
+    weight: 20
+    flow:
+      # Analyze positive sentiment
+      - post:
+          url: "/api/v1/sentiment"
+          json:
+            text: |
+              Great meeting today! Everyone was engaged and enthusiastic.
+              We made excellent progress on our goals. The team is performing
+              exceptionally well. Looking forward to our next collaboration.
+            include_segments: true
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: overall_sentiment
+            - hasProperty: sentiment_score
+            - hasProperty: emotions
+
+      # Analyze negative sentiment
+      - post:
+          url: "/api/v1/sentiment"
+          json:
+            text: |
+              This meeting was frustrating. Many concerns were raised but not addressed.
+              The team seems demotivated and confused about priorities. We need to
+              improve our communication and planning processes significantly.
+            include_segments: false
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+      # Analyze neutral sentiment
+      - post:
+          url: "/api/v1/sentiment"
+          json:
+            text: |
+              The meeting covered standard agenda items. Status updates were provided.
+              No major decisions were made. Action items were assigned as usual.
+              Next meeting scheduled for the regular time.
+            include_segments: true
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  # Scenario 5: Speaker identification (optional, 10%)
+  - name: "Speaker Diarization"
+    weight: 10
+    flow:
+      # Request transcription with diarization
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            audio_url: "https://example.com/multi-speaker-audio.mp3"
+            language: "en"
+            enable_diarization: true
+            enable_timestamps: true
+            num_speakers: 3
+          expect:
+            - statusCode: [200, 400]
+            - contentType: json
+
+  # Scenario 6: Batch processing (stress test, 5%)
+  - name: "Batch Operations"
+    weight: 5
+    flow:
+      # Multiple transcriptions in sequence
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            audio_url: "https://example.com/batch-audio-1.mp3"
+            language: "en"
+          expect:
+            - statusCode: [200, 400]
+
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            audio_url: "https://example.com/batch-audio-2.mp3"
+            language: "en"
+          expect:
+            - statusCode: [200, 400]
+
+      # Multiple summarizations
+      - post:
+          url: "/api/v1/summarize"
+          json:
+            text: "Meeting transcript text here for batch processing test."
+            max_length: 100
+          expect:
+            - statusCode: 200
+
+      - post:
+          url: "/api/v1/summarize"
+          json:
+            text: "Another meeting transcript for load testing purposes."
+            max_length: 100
+          expect:
+            - statusCode: 200
+
+  # Scenario 7: Error handling (5%)
+  - name: "Error Scenarios"
+    weight: 5
+    flow:
+      # Invalid audio URL
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            audio_url: "invalid-url"
+            language: "en"
+          expect:
+            - statusCode: [400, 422]
+
+      # Empty text for summarization
+      - post:
+          url: "/api/v1/summarize"
+          json:
+            text: ""
+            max_length: 100
+          expect:
+            - statusCode: [400, 422]
+
+      # Invalid sentiment text
+      - post:
+          url: "/api/v1/sentiment"
+          json:
+            text: ""
+          expect:
+            - statusCode: [400, 422]
+
+      # Missing required fields
+      - post:
+          url: "/api/v1/transcribe"
+          json:
+            language: "en"
+          expect:
+            - statusCode: [400, 422]
+
+after:
+  flow:
+    - log: "AI Service load test completed - Review OpenAI API usage and costs"

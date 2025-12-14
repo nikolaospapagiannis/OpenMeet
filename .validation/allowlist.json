@@ -1,0 +1,44 @@
+{
+  "docClaims": {
+    "ignorePrefixes": [
+      "src/agents/",
+      "src/websocket/",
+      "src/extension/",
+      "src/test/integration/"
+    ],
+    "ignoreExact": [
+      "docs/architecture.md",
+      "docs/deployment.md",
+      "docs/testing.md",
+      "docs/api.md"
+    ]
+  },
+  "skipPaths": [
+    "node_modules",
+    "dist",
+    "build",
+    ".git",
+    "coverage",
+    "venv",
+    "__pycache__",
+    ".validation",
+    "models",
+    "data",
+    "generated",
+    "Lib/site-packages",
+    "packages/core/src/generated",
+    "packages/ml-services/venv"
+  ],
+  "skipPatterns": [
+    "\\.test\\.",
+    "\\.spec\\.",
+    "\\.d\\.ts$",
+    "node_modules",
+    "/generated/",
+    "/venv/",
+    "bundle\\.js$",
+    "\\.min\\.js$",
+    "prisma/runtime/",
+    "prisma/query_engine"
+  ]
+}
