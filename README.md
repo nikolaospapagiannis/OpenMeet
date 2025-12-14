@@ -36,8 +36,47 @@
 
 ---
 
+## The Team
+
+OpenMeet is built and maintained by a passionate team of engineers and entrepreneurs:
+
+<table>
+<tr>
+<td align="center" width="33%">
+<img src="https://github.com/nikolaospapagiannis.png" width="150" height="150" style="border-radius: 50%;" alt="Nikolaos Papagiannis">
+<br>
+<strong>Nikolaos Papagiannis</strong>
+<br>
+<em>Co-Founder & Lead Engineer</em>
+<br>
+<a href="https://github.com/nikolaospapagiannis">GitHub</a> | <a href="https://linkedin.com/in/nikolaospapagiannis">LinkedIn</a>
+</td>
+<td align="center" width="33%">
+<img src="https://wp2.investments/templates/yootheme/cache/0d/wmpysiewicz-4-0d8ab51b.webp" width="150" height="150" style="border-radius: 50%;" alt="Wojciech M. Pysiewicz">
+<br>
+<strong>Wojciech M. Pysiewicz</strong>
+<br>
+<em>Co-Founder & Strategy</em>
+<br>
+<a href="https://wp2.investments">Website</a> | <a href="https://linkedin.com/in/pysiewicz">LinkedIn</a>
+</td>
+<td align="center" width="33%">
+<img src="https://xyz.pl/wp-content/uploads/2025/11/ADAM_FILIPOWSKI.png" width="150" height="150" style="border-radius: 50%;" alt="Adam Filipowski">
+<br>
+<strong>Adam Filipowski</strong>
+<br>
+<em>Co-Founder & Product</em>
+<br>
+<a href="https://github.com/adamfilipowski">GitHub</a> | <a href="https://linkedin.com/in/adamfilipowski">LinkedIn</a>
+</td>
+</tr>
+</table>
+
+---
+
 ## Table of Contents
 
+- [The Team](#the-team)
 - [Features](#-features)
 - [Web App Features](#-web-app-features)
 - [Why OpenMeet?](#-why-openmeet)
@@ -47,11 +86,7 @@
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [API Documentation](#-api-documentation)
-- [Components Library](#-components-library)
-- [Integrations](#-integrations)
-- [Deployment](#-deployment)
 - [Roadmap](#-roadmap)
-- [The Team](#-the-team)
 - [Contributing](#-contributing)
 - [Security](#-security)
 - [License](#-license)
@@ -583,44 +618,6 @@ curl http://localhost:4000/api/v1/meetings \
 | `/api/v1/extract-keywords` | POST | Keyword extraction |
 | `/api/v1/chat` | POST | Conversational AI |
 | `/health` | GET | Health check |
-
----
-
-## The Team
-
-OpenMeet is built and maintained by a passionate team of engineers and entrepreneurs:
-
-<table>
-<tr>
-<td align="center" width="33%">
-<img src="https://github.com/nikolaospapagiannis.png" width="150" height="150" style="border-radius: 50%;" alt="Nikolaos Papagiannis">
-<br>
-<strong>Nikolaos Papagiannis</strong>
-<br>
-<em>Co-Founder & Lead Engineer</em>
-<br>
-<a href="https://github.com/nikolaospapagiannis">GitHub</a> | <a href="https://linkedin.com/in/nikolaospapagiannis">LinkedIn</a>
-</td>
-<td align="center" width="33%">
-<img src="https://wp2.investments/templates/yootheme/cache/0d/wmpysiewicz-4-0d8ab51b.webp" width="150" height="150" style="border-radius: 50%;" alt="Wojciech M. Pysiewicz">
-<br>
-<strong>Wojciech M. Pysiewicz</strong>
-<br>
-<em>Co-Founder & Strategy</em>
-<br>
-<a href="https://wp2.investments">Website</a> | <a href="https://linkedin.com/in/pysiewicz">LinkedIn</a>
-</td>
-<td align="center" width="33%">
-<img src="https://xyz.pl/wp-content/uploads/2025/11/ADAM_FILIPOWSKI.png" width="150" height="150" style="border-radius: 50%;" alt="Adam Filipowski">
-<br>
-<strong>Adam Filipowski</strong>
-<br>
-<em>Co-Founder & Product</em>
-<br>
-<a href="https://github.com/adamfilipowski">GitHub</a> | <a href="https://linkedin.com/in/adamfilipowski">LinkedIn</a>
-</td>
-</tr>
-</table>
 
 ---
 
