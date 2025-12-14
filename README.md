@@ -26,7 +26,7 @@
   <!-- Quick Links -->
   <p>
     <a href="#-quick-start">Quick Start</a> &bull;
-    <a href="docs/getting-started/installation.md">Documentation</a> &bull;
+    <a href="#-documentation">Documentation</a> &bull;
     <a href="#-features">Features</a> &bull;
     <a href="#-web-app-features">Web App</a> &bull;
     <a href="CONTRIBUTING.md">Contributing</a> &bull;
@@ -86,6 +86,7 @@ OpenMeet is built and maintained by a passionate team of engineers and entrepren
 - [Architecture](#-architecture)
 - [Tech Stack](#-tech-stack)
 - [API Documentation](#-api-documentation)
+- [Documentation](#-documentation)
 - [Roadmap](#-roadmap)
 - [Contributing](#-contributing)
 - [Security](#-security)
@@ -618,6 +619,73 @@ curl http://localhost:4000/api/v1/meetings \
 | `/api/v1/extract-keywords` | POST | Keyword extraction |
 | `/api/v1/chat` | POST | Conversational AI |
 | `/health` | GET | Health check |
+
+---
+
+## Documentation
+
+All project documentation is organized in the [`docs/`](docs/) directory. See the [Documentation Index](docs/README.md) for a complete overview.
+
+### Quick Links by Category
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+#### Getting Started
+- [Setup Guide](docs/guides/SETUP_GUIDE.md) - Complete installation walkthrough
+- [Quick Start Guide](docs/guides/QUICK_START_GUIDE.md) - Get running in 5 minutes
+- [Chrome Extension Guide](docs/guides/CHROME_EXTENSION_GUIDE.md) - Browser extension setup
+
+#### Deployment
+- [Production Deployment](docs/deployment/PRODUCTION_DEPLOYMENT_GUIDE.md) - Deploy to production
+- [Docker Deployment](docs/deployment/DOCKER_DEPLOYMENT.md) - Docker Compose setup
+- [Deployment Checklist](docs/deployment/DEPLOYMENT_CHECKLIST.md) - Pre-launch checklist
+- [Disaster Recovery](docs/deployment/DISASTER_RECOVERY_RUNBOOK.md) - DR procedures
+
+#### Enterprise
+- [SSO Implementation](docs/enterprise/SSO_IMPLEMENTATION_GUIDE.md) - SAML, OIDC, SCIM
+- [RBAC Deployment](docs/enterprise/RBAC_DEPLOYMENT_GUIDE.md) - Role-based access
+- [OAuth Runbooks](docs/enterprise/OAUTH_RUNBOOKS.md) - OAuth troubleshooting
+
+</td>
+<td width="50%" valign="top">
+
+#### AI/ML
+- [Offline AI Setup](docs/ai/OFFLINE_AI_SETUP.md) - Run AI 100% locally
+- [AI Provider System](docs/ai/PROVIDER_SYSTEM_IMPLEMENTATION.md) - Multi-provider support
+- [AI Predictions](docs/ai/AI_PREDICTION_REAL_DATA_IMPLEMENTATION_REPORT.md)
+
+#### Security
+- [Security Audit Report](docs/security/SECURITY_AUDIT_REPORT.md) - Security assessment
+- [Rate Limiting](docs/security/RATE_LIMITING_IMPLEMENTATION.md) - API protection
+- [Audit Logging](docs/security/AUDIT_LOGGING_IMPLEMENTATION.md) - Compliance logging
+
+#### Testing
+- [E2E Testing Guide](docs/testing/README-E2E-TESTING.md) - End-to-end tests
+- [E2E Test Checklist](docs/testing/E2E-TEST-CHECKLIST.md) - Test coverage
+- [Load Testing](docs/testing/LOAD_TESTING_IMPLEMENTATION_SUMMARY.md) - Performance testing
+
+</td>
+</tr>
+</table>
+
+### Documentation Structure
+
+```
+docs/
+├── ai/                    # AI/ML integration documentation
+├── architecture/          # System architecture (see main README)
+├── deployment/            # Deployment guides & runbooks
+├── enterprise/            # Enterprise features (SSO, RBAC, SCIM)
+├── features/              # Feature implementation docs
+├── guides/                # User & setup guides
+├── internal/              # Internal development notes
+├── reports/               # Audit reports & analysis
+├── security/              # Security implementation docs
+├── testing/               # Testing guides & reports
+└── assets/                # Images & static assets
+```
 
 ---
 
