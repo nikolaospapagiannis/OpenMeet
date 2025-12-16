@@ -59,7 +59,7 @@ export function ActionItemsList({
       });
 
       const updatedItems = items.map((i) =>
-        i.id === item.id ? { ...i, status: newStatus } : i
+        i.id === item.id ? { ...i, status: newStatus as ActionItem['status'] } : i
       );
       setItems(updatedItems);
       onUpdate?.(updatedItems);

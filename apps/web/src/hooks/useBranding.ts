@@ -44,7 +44,7 @@ export interface BrandingConfig {
 
   // Custom Domain
   customDomain?: string;
-  customDomainVerified?: boolean;
+  customDomainVerified: boolean;
   customDomainDNS?: Array<{
     type: string;
     name: string;
@@ -58,7 +58,7 @@ export interface BrandingConfig {
     heading?: string;
     body?: string;
   };
-  hideWatermark?: boolean;
+  hideWatermark: boolean;
   customScripts?: string;
 
   // Social Links
@@ -111,6 +111,8 @@ export function useBranding() {
     infoColor: '#3B82F6',
     productName: 'OpenMeet',
     emailFromName: 'OpenMeet',
+    customDomainVerified: false,
+    hideWatermark: false,
   });
 
   const [assets, setAssets] = useState<BrandAsset[]>([]);

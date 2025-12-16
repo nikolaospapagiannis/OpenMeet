@@ -152,6 +152,7 @@ model Organization {
   emailLogs           EmailLog[]
   teamInvites         TeamInvite[]
   subscription        Subscription?
+  sessionGeoData      SessionGeoData[]
 
   @@index([slug])
   @@index([status])
@@ -245,8 +246,38 @@ model Session {
   expiresAt    DateTime
   createdAt    DateTime @default(now())
 
+  geoData      SessionGeoData?
+
   @@index([userId])
   @@index([expiresAt])
+}
+
+// Session Geo Data - For geographic distribution analytics
+model SessionGeoData {
+  id             String       @id @default(uuid())
+  sessionId      String       @unique
+  session        Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // GeoIP data
+  country        String
+  countryCode    String       @db.Char(2)
+  region         String?
+  city           String?
+  latitude       Float?
+  longitude      Float?
+  timezone       String?
+
+  // Anonymized IP for GDPR compliance
+  ipHash         String
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, countryCode])
+  @@index([organizationId, createdAt])
+  @@index([countryCode])
 }
 
 // Workspaces
@@ -3045,4 +3076,264 @@ model SystemSetting {
 
   @@index([category])
   @@index([isPublic])
+}
+
+// ====================================================================
+// SUPPORT TICKET SYSTEM MODELS
+// ====================================================================
+
+// Support Ticket Status
+enum TicketStatus {
+  open
+  in_progress
+  waiting_on_customer
+  resolved
+  closed
+}
+
+// Support Ticket Priority
+enum TicketPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+// Support Tickets for customer support management
+model SupportTicket {
+  id             String         @id @default(uuid())
+  ticketNumber   String         @unique // Human-readable ticket number (e.g., TKT-20231215-0001)
+  subject        String
+  description    String         @db.Text
+  status         TicketStatus   @default(open)
+  priority       TicketPriority @default(medium)
+  category       String?        // billing, technical, feature_request, bug_report, general
+  tags           String[]       @default([])
+
+  // Relations
+  organizationId String?
+  userId         String // The user who created the ticket
+  assigneeId     String? // Admin user assigned to handle the ticket
+
+  // SLA tracking
+  firstResponseAt DateTime? // When first response was sent
+  resolvedAt      DateTime? // When ticket was resolved
+  closedAt        DateTime? // When ticket was closed
+  slaBreached     Boolean   @default(false)
+
+  // Escalation tracking
+  escalationLevel Int       @default(0) // 0 = normal, 1 = escalated, 2 = critical escalation
+  escalatedAt     DateTime?
+  escalatedBy     String?
+
+  // Satisfaction
+  satisfactionRating Int? // 1-5 rating
+  satisfactionComment String?
+
+  // Metadata
+  source         String    @default("web") // web, email, api, phone
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  messages TicketMessage[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([assigneeId])
+  @@index([ticketNumber])
+  @@index([createdAt])
+  @@index([status, priority])
+  @@index([assigneeId, status])
+  @@index([organizationId, status])
+}
+
+// Ticket Messages - conversation history for support tickets
+model TicketMessage {
+  id         String        @id @default(uuid())
+  ticketId   String
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderId   String // User ID of the sender
+  senderType String        @default("user") // user, admin, system
+  senderName String? // Display name of sender
+  content    String        @db.Text
+  isInternal Boolean       @default(false) // Internal notes visible only to admins
+
+  // Attachments
+  attachments Json @default("[]") // Array of {name, url, size, mimeType}
+
+  // Metadata
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ticketId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@index([isInternal])
+}
+
+// ====================================================================
+// COMPLIANCE & SECURITY MODELS
+// ====================================================================
+
+// GDPR Request Types
+enum GdprRequestType {
+  export // Data export request (Article 15 - Right of access)
+  delete // Data deletion request (Article 17 - Right to erasure)
+}
+
+// GDPR Request Status
+enum GdprRequestStatus {
+  pending    // Request received, not started
+  processing // Request is being processed
+  completed  // Request fulfilled
+  failed     // Request failed
+  cancelled  // Request cancelled by user or admin
+}
+
+// GDPR Data Requests
+model GdprRequest {
+  id              String            @id @default(uuid())
+  type            GdprRequestType
+  userId          String // User whose data is being requested
+  status          GdprRequestStatus @default(pending)
+  requestedAt     DateTime          @default(now())
+  startedAt       DateTime? // When processing started
+  completedAt     DateTime? // When request was fulfilled
+  requestedBy     String // Admin who initiated the request
+  processedBy     String? // Admin who processed the request
+
+  // For export requests
+  exportFileUrl   String? // S3 URL for exported data
+  exportFileSize  BigInt? // Size of export file in bytes
+  exportExpiresAt DateTime? // When export link expires
+
+  // For delete requests
+  deletedTables   Json @default("[]") // Tables from which data was deleted
+  deletedCount    Int  @default(0) // Total records deleted
+
+  // Notes and audit
+  notes        String? @db.Text // Admin notes
+  errorMessage String? // Error details if failed
+  auditTrail   Json    @default("[]") // Detailed audit trail of actions
+
+  // Metadata
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([requestedBy])
+}
+
+// Platform Security Settings (singleton - use key 'default')
+model SecuritySettings {
+  id  String @id @default(uuid())
+  key String @unique @default("default")
+
+  // Password Policy
+  passwordMinLength        Int     @default(12)
+  passwordMaxLength        Int     @default(128)
+  passwordRequireUppercase Boolean @default(true)
+  passwordRequireLowercase Boolean @default(true)
+  passwordRequireNumbers   Boolean @default(true)
+  passwordRequireSpecial   Boolean @default(true)
+  passwordExpiryDays       Int     @default(90) // 0 = never expires
+  passwordHistoryCount     Int     @default(5) // Prevent reuse of last N passwords
+
+  // MFA Settings
+  mfaRequired          Boolean @default(false) // Require MFA for all users
+  mfaRequiredForAdmins Boolean @default(true) // Require MFA for admin roles
+  mfaAllowedMethods    Json    @default("[\"totp\", \"webauthn\"]") // Allowed MFA methods
+
+  // Session Settings
+  sessionTimeoutMinutes     Int @default(60) // Session timeout in minutes
+  maxConcurrentSessions     Int @default(5) // Max concurrent sessions per user
+  sessionIdleTimeoutMinutes Int @default(30) // Idle timeout before re-auth
+
+  // Login Security
+  maxLoginAttempts          Int     @default(5) // Before lockout
+  lockoutDurationMinutes    Int     @default(30) // Lockout duration
+  loginNotificationsEnabled Boolean @default(true) // Email on new login
+
+  // IP Whitelist (stored as JSON array of IP addresses/CIDR ranges)
+  ipWhitelistEnabled Boolean @default(false)
+  ipWhitelist        Json    @default("[]") // Array of {ip, label, addedBy, addedAt}
+
+  // API Security
+  apiKeyExpiryDays      Int @default(365) // API key expiry
+  apiRateLimitPerMinute Int @default(1000) // Default rate limit
+
+  // Audit Settings
+  auditRetentionDays Int @default(365) // How long to keep audit logs
+
+  // Last updated tracking
+  updatedBy String? // Admin who last updated
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// IP Whitelist Entries (separate table for better querying)
+model IpWhitelistEntry {
+  id         String    @id @default(uuid())
+  ip         String    @unique // IP address or CIDR range
+  label      String? // Description/label for the IP
+  addedBy    String // Admin who added this entry
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime? // Optional expiry date
+  lastUsedAt DateTime? // Last time this IP was used
+  useCount   Int       @default(0) // Number of times this IP was used
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([ip])
+  @@index([isActive])
+  @@index([addedBy])
+}
+
+// Security Threat Detection
+model SecurityThreat {
+  id             String @id @default(uuid())
+  type           String // brute_force, suspicious_ip, unusual_activity, etc.
+  severity       String @default("medium") // low, medium, high, critical
+  status         String @default("active") // active, investigating, resolved, false_positive
+
+  // Threat Details
+  ipAddress      String?
+  userId         String?
+  userEmail      String?
+  organizationId String?
+  description    String  @db.Text
+  evidence       Json    @default("{}") // Raw evidence data
+
+  // Detection
+  detectedAt DateTime @default(now())
+  detectedBy String   @default("system") // system or admin ID
+
+  // Resolution
+  resolvedAt   DateTime?
+  resolvedBy   String?
+  resolution   String?   @db.Text // How it was resolved
+  actionsTaken Json      @default("[]") // Actions taken (blocked, notified, etc.)
+
+  // Metadata
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([severity])
+  @@index([status])
+  @@index([ipAddress])
+  @@index([userId])
+  @@index([detectedAt])
 }

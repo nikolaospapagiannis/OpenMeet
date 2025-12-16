@@ -142,12 +142,12 @@ export default function TourTooltip({
     >
       {/* Arrow */}
       <div
-        style={arrowStyle}
-        className="w-4 h-4 bg-slate-900 border-teal-500/50"
-        css={{
+        style={{
+          ...arrowStyle,
           borderWidth: '1px',
           clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
         }}
+        className="w-4 h-4 bg-slate-900 border-teal-500/50"
       />
 
       {/* Content */}

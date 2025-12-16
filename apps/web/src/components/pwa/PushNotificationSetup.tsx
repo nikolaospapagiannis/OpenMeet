@@ -114,7 +114,7 @@ export const PushNotificationSetup: React.FC = () => {
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey
+        applicationServerKey: convertedVapidKey as BufferSource
       });
 
       // Send subscription to backend

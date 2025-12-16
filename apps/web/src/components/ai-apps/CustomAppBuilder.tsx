@@ -658,7 +658,11 @@ export default function CustomAppBuilder({ onSaveApp, onTestApp }: CustomAppBuil
                           value={appConfig.webhooks?.url}
                           onChange={(e) => setAppConfig(prev => ({
                             ...prev,
-                            webhooks: { ...prev.webhooks, url: e.target.value }
+                            webhooks: {
+                              enabled: prev.webhooks?.enabled ?? false,
+                              url: e.target.value,
+                              events: prev.webhooks?.events ?? []
+                            }
                           }))}
                           className="bg-slate-900/50 border-white/10 text-white"
                         />

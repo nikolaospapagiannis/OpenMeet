@@ -3,6 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 
+// Extend Session type for accessToken
+interface ExtendedSession {
+  accessToken?: string;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
+  expires: string;
+}
+
 export interface QualityFactor {
   name: string;
   score: number;
@@ -95,6 +106,7 @@ export interface QualityAnalytics {
 
 export function useQuality() {
   const { data: session } = useSession();
+  const extendedSession = session as ExtendedSession | null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,7 +128,7 @@ export function useQuality() {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -134,7 +146,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Fetch industry benchmarks
   const fetchBenchmarks = useCallback(async (industry?: string) => {
@@ -148,7 +160,7 @@ export function useQuality() {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -166,7 +178,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Fetch improvement suggestions
   const fetchSuggestions = useCallback(async (factorFilter?: string) => {
@@ -180,7 +192,7 @@ export function useQuality() {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -198,7 +210,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Fetch team quality data
   const fetchTeamData = useCallback(async (period: 'week' | 'month' | 'quarter' = 'month') => {
@@ -208,7 +220,7 @@ export function useQuality() {
 
       const response = await fetch(`/api/quality/teams?period=${period}`, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -226,7 +238,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Fetch analytics data
   const fetchAnalytics = useCallback(async (period: 'week' | 'month' | 'quarter' | 'year' = 'month') => {
@@ -236,7 +248,7 @@ export function useQuality() {
 
       const response = await fetch(`/api/quality/analytics?period=${period}`, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -254,7 +266,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Calculate quality score for a meeting
   const calculateQualityScore = useCallback(async (meetingData: {
@@ -273,7 +285,7 @@ export function useQuality() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
         body: JSON.stringify(meetingData),
       });
@@ -291,7 +303,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Apply improvement suggestion
   const applySuggestion = useCallback(async (suggestionId: string) => {
@@ -302,7 +314,7 @@ export function useQuality() {
       const response = await fetch(`/api/quality/suggestions/${suggestionId}/apply`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -323,7 +335,7 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken, fetchSuggestions]);
+  }, [extendedSession?.accessToken, fetchSuggestions]);
 
   // Export quality report
   const exportReport = useCallback(async (format: 'pdf' | 'csv' | 'json' = 'pdf') => {
@@ -333,7 +345,7 @@ export function useQuality() {
 
       const response = await fetch(`/api/quality/export?format=${format}`, {
         headers: {
-          'Authorization': `Bearer ${session?.accessToken}`,
+          'Authorization': `Bearer ${extendedSession?.accessToken}`,
         },
       });
 
@@ -359,18 +371,18 @@ export function useQuality() {
     } finally {
       setLoading(false);
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   // Initial data fetch
   useEffect(() => {
-    if (session?.accessToken) {
+    if (extendedSession?.accessToken) {
       fetchQualityScore();
       fetchBenchmarks();
       fetchSuggestions();
       fetchTeamData();
       fetchAnalytics();
     }
-  }, [session?.accessToken]);
+  }, [extendedSession?.accessToken]);
 
   return {
     // State

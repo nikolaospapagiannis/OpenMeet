@@ -20,6 +20,9 @@ const cardGlassVariants = cva(
         subtle:
           "bg-slate-900/30 dark:bg-slate-900/30 border border-white/5 dark:border-white/5 " +
           "light:bg-white/50 light:border-slate-200/30",
+        gradient:
+          "bg-gradient-to-br from-slate-900/60 via-slate-800/50 to-slate-900/60 border border-white/15 " +
+          "shadow-2xl shadow-purple-500/10 light:from-white/80 light:via-white/60 light:to-white/80",
       },
       hover: {
         true:
@@ -32,6 +35,7 @@ const cardGlassVariants = cva(
         sm: "p-4",
         md: "p-6 lg:p-8",
         lg: "p-8 lg:p-12",
+        xl: "p-10 lg:p-16",
         none: "",
       },
       gradient: {

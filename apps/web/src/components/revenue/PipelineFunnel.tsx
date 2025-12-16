@@ -16,7 +16,7 @@ const STAGE_COLORS = {
   CLOSED_LOST: '#ef4444',     // Red
 };
 
-const STAGE_LABELS = {
+const STAGE_LABELS: Record<string, string> = {
   DISCOVERY: 'Discovery',
   QUALIFICATION: 'Qualification',
   PROPOSAL: 'Proposal',
@@ -123,7 +123,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
                 position="center"
                 fill="#fff"
                 fontSize={12}
-                formatter={(value: any, entry: any) => `${entry.payload.name}\n${entry.payload.deals} deals`}
+                formatter={(_value: unknown, _entry?: unknown) => `${_value} deals`}
               />
             </Funnel>
           </FunnelChart>

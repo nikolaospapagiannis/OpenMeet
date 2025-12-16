@@ -87,6 +87,9 @@ export default function DashboardLayout({
     return null;
   }
 
+  // Check if user has admin privileges
+  const isSystemAdmin = user?.systemRole && ['super_admin', 'platform_admin', 'billing_admin', 'support_admin', 'viewer'].includes(user.systemRole);
+
   const navItems = [
     { icon: Home, label: 'Home', href: '/dashboard' },
     { icon: Calendar, label: 'Meetings', href: '/meetings' },
@@ -207,6 +210,25 @@ export default function DashboardLayout({
               </Link>
             );
           })}
+
+          {/* Super Admin Panel Link - Only for system admins */}
+          {isSystemAdmin && (
+            <>
+              <div className="my-3 border-t border-white/5" />
+              <Link href="/admin">
+                <div
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                    pathname.startsWith('/admin')
+                      ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 border border-purple-500/20'
+                      : 'text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 border border-purple-500/20'
+                  }`}
+                >
+                  <Shield className="h-5 w-5" />
+                  <span className="text-sm font-medium">Admin Panel</span>
+                </div>
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Bottom Section */}

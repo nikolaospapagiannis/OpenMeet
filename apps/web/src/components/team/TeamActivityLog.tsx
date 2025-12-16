@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, Calendar, User, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button-v2';
 import { Badge } from '@/components/ui/badge';
@@ -56,7 +56,7 @@ export function TeamActivityLog({ fetchActivityLog }: TeamActivityLogProps) {
   };
 
   const getActionIcon = (action: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       invite: <User className="w-4 h-4 text-green-400" />,
       bulk_invite: <User className="w-4 h-4 text-green-400" />,
       resend_invite: <User className="w-4 h-4 text-blue-400" />,

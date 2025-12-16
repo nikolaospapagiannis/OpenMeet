@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X, Scissors, Play, Pause, Check, AlertCircle } from 'lucide-react';
 
 interface ClipCreatorProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   currentTime: number;
   duration: number;
   onCreateClip: (start: number, end: number, title: string) => Promise<void>;

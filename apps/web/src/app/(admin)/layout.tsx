@@ -22,6 +22,12 @@ import {
   LogOut,
   Menu,
   X,
+  HeadphonesIcon,
+  Key,
+  ShieldCheck,
+  Palette,
+  FileBarChart,
+  Brain,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -49,7 +55,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Overview',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
-      { icon: Activity, label: 'Platform Health', href: '/admin/health' },
     ],
   },
   {
@@ -64,22 +69,31 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: 'Analytics & Reporting',
     items: [
       { icon: BarChart3, label: 'Analytics', href: '/admin/analytics' },
+      { icon: FileBarChart, label: 'Reports', href: '/admin/reports' },
       { icon: FileText, label: 'Audit Logs', href: '/admin/logs' },
     ],
   },
   {
-    title: 'Infrastructure',
+    title: 'Operations',
     items: [
       { icon: Server, label: 'Infrastructure', href: '/admin/infrastructure', requiredRole: 'platform_admin' },
-      { icon: Database, label: 'Database', href: '/admin/database', requiredRole: 'platform_admin' },
-      { icon: Globe, label: 'API Metrics', href: '/admin/api-metrics', requiredRole: 'platform_admin' },
+      { icon: Bell, label: 'Alerts', href: '/admin/alerts' },
+      { icon: Brain, label: 'AI Operations', href: '/admin/ai-operations', requiredRole: 'platform_admin' },
+    ],
+  },
+  {
+    title: 'Support & Compliance',
+    items: [
+      { icon: HeadphonesIcon, label: 'Support Tickets', href: '/admin/support', requiredRole: 'support_admin' },
+      { icon: ShieldCheck, label: 'Compliance', href: '/admin/compliance', requiredRole: 'platform_admin' },
     ],
   },
   {
     title: 'Configuration',
     items: [
       { icon: Flag, label: 'Feature Flags', href: '/admin/feature-flags', requiredRole: 'platform_admin' },
-      { icon: Bell, label: 'Alerts', href: '/admin/alerts' },
+      { icon: Key, label: 'API Management', href: '/admin/api-management', requiredRole: 'platform_admin' },
+      { icon: Palette, label: 'White-label', href: '/admin/white-label', requiredRole: 'super_admin' },
       { icon: Settings, label: 'Settings', href: '/admin/settings', requiredRole: 'super_admin' },
     ],
   },

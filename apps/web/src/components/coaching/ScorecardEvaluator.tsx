@@ -313,7 +313,7 @@ export function ScorecardEvaluator({
                   )}
                 </div>
                 <div className="flex-shrink-0">
-                  <ScoreGauge score={overallScore} size="small" />
+                  <ScoreGauge score={overallScore} size={100} />
                 </div>
               </div>
             </div>

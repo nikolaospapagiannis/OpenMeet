@@ -265,7 +265,7 @@ export default function AnalyticsPage() {
                 <p className="text-xs text-slate-400 mb-1">Comments per Meeting</p>
                 <p className="text-xl font-bold text-white">
                   {loading ? '...' :
-                    (data?.overview.totalMeetings > 0
+                    (data?.overview?.totalMeetings && data.overview.totalMeetings > 0
                       ? (data.overview.totalComments / data.overview.totalMeetings).toFixed(1)
                       : '0')}
                 </p>

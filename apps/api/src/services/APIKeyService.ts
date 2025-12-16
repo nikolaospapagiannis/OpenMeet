@@ -75,7 +75,7 @@ class APIKeyService {
       // Create API key record
       const apiKey = await prisma.apiKey.create({
         data: {
-          organization: { connect: { id: organizationId } },
+          organizationId,
           user: { connect: { id: userId } },
           name: options.name,
           keyHash: hashedKey,

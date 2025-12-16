@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
 import React from 'react';
+import { waitFor, screen } from '@testing-library/react';
 
 // Polyfill TextEncoder/TextDecoder for Jest environment
 global.TextEncoder = TextEncoder;
@@ -23,11 +24,14 @@ Object.defineProperty(window, 'matchMedia', {
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
+  readonly root: Element | Document | null = null;
+  readonly rootMargin: string = '';
+  readonly thresholds: ReadonlyArray<number> = [];
+  constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
   disconnect() {}
-  observe() {}
-  unobserve() {}
-  takeRecords() {
+  observe(_target: Element) {}
+  unobserve(_target: Element) {}
+  takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
 };
@@ -109,12 +113,12 @@ Object.defineProperty(window, 'sessionStorage', {
 if (!global.crypto) {
   global.crypto = {} as any;
 }
-global.crypto.randomUUID = () => {
+global.crypto.randomUUID = (): `${string}-${string}-${string}-${string}-${string}` => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
-  });
+  }) as `${string}-${string}-${string}-${string}-${string}`;
 };
 
 // Suppress console errors and warnings in tests

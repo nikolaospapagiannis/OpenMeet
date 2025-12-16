@@ -241,7 +241,8 @@ export default function AdminInfrastructurePage() {
     return <Cloud className="h-5 w-5" />;
   };
 
-  const formatUptime = (seconds: number) => {
+  const formatUptime = (seconds: number | undefined | null) => {
+    if (seconds === undefined || seconds === null) return '-';
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -251,19 +252,20 @@ export default function AdminInfrastructurePage() {
     return minutes + 'm';
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
+  const formatBytes = (bytes: number | undefined | null) => {
+    if (bytes === undefined || bytes === null || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Number((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const formatBytesPerSecond = (bytes: number) => {
+  const formatBytesPerSecond = (bytes: number | undefined | null) => {
     return formatBytes(bytes) + '/s';
   };
 
-  const formatRelativeTime = (dateString: string) => {
+  const formatRelativeTime = (dateString: string | undefined | null) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();

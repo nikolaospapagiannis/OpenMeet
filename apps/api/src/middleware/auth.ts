@@ -23,7 +23,7 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-// Extend Request type to include user
+// Extend Request type to include user with systemRole for admin features
 declare global {
   namespace Express {
     interface Request {
@@ -32,6 +32,7 @@ declare global {
         email: string;
         organizationId?: string;
         role: string;
+        systemRole?: string;
       };
     }
   }
@@ -269,9 +270,8 @@ export const apiKeyAuth = async (
     // Find API key in database
     const apiKeyRecord = await prisma.apiKey.findUnique({
       where: { keyHash },
-      include: { 
+      include: {
         user: true,
-        organization: true,
       },
     });
 
@@ -300,14 +300,14 @@ export const apiKeyAuth = async (
     req.user = {
       id: apiKeyRecord.user.id,
       email: apiKeyRecord.user.email,
-      organizationId: apiKeyRecord.organization.id,
+      organizationId: apiKeyRecord.organizationId,
       role: apiKeyRecord.user.role,
     };
 
     // Log API key usage
     await prisma.auditLog.create({
       data: {
-        organizationId: apiKeyRecord.organization.id,
+        organizationId: apiKeyRecord.organizationId,
         userId: apiKeyRecord.user.id,
         action: 'api_key_used',
         resourceType: 'api_key',

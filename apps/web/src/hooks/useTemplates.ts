@@ -543,7 +543,7 @@ export function useTemplates(): UseTemplatesReturn {
       if (response.data.success) {
         setTemplates(prev => prev.map(t =>
           t.id === templateId
-            ? { ...t, metadata: { ...t.metadata, favorited: true } }
+            ? { ...t, metadata: { version: t.metadata?.version ?? '1.0.0', isPublic: t.metadata?.isPublic ?? false, isDraft: t.metadata?.isDraft ?? false, favorited: true, sharedWith: t.metadata?.sharedWith ?? 0, lastUsed: t.metadata?.lastUsed } }
             : t
         ));
         return true;
@@ -563,7 +563,7 @@ export function useTemplates(): UseTemplatesReturn {
       if (response.data.success) {
         setTemplates(prev => prev.map(t =>
           t.id === templateId
-            ? { ...t, metadata: { ...t.metadata, favorited: false } }
+            ? { ...t, metadata: { version: t.metadata?.version ?? '1.0.0', isPublic: t.metadata?.isPublic ?? false, isDraft: t.metadata?.isDraft ?? false, favorited: false, sharedWith: t.metadata?.sharedWith ?? 0, lastUsed: t.metadata?.lastUsed } }
             : t
         ));
         return true;

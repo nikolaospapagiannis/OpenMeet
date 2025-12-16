@@ -203,8 +203,8 @@ export default function CompetitorTracker({
         timestamp: m.timestamp.toISOString()
       })),
       insights: Array.from(insights.entries()).map(([id, insight]) => ({
-        competitorId: id,
-        ...insight
+        ...insight,
+        competitorId: id
       })),
       exportDate: new Date().toISOString()
     };

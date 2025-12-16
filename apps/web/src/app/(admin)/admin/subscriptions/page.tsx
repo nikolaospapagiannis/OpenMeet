@@ -303,14 +303,16 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
-  const formatCurrency = (amount: number, currency = 'USD') => {
+  const formatCurrency = (amount: number | undefined | null, currency = 'USD') => {
+    if (amount === undefined || amount === null) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -382,7 +384,7 @@ export default function AdminSubscriptionsPage() {
                 </p>
               </div>
             </div>
-            {stats && stats.mrrGrowth !== 0 && (
+            {stats && stats.mrrGrowth !== undefined && stats.mrrGrowth !== 0 && (
               <div className={`flex items-center gap-1 text-sm ${stats.mrrGrowth > 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {stats.mrrGrowth > 0 ? (
                   <ArrowUpRight className="h-4 w-4" />

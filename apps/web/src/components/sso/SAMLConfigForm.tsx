@@ -96,6 +96,16 @@ export const SAMLConfigForm: React.FC<SAMLConfigFormProps> = ({
         firstName: 'firstName',
         lastName: 'lastName'
       }
+    },
+    onelogin: {
+      entityId: 'https://app.onelogin.com/saml/metadata/{appId}',
+      ssoUrl: 'https://{subdomain}.onelogin.com/trust/saml2/http-post/sso/{appId}',
+      attributeMapping: {
+        email: 'User.email',
+        firstName: 'User.FirstName',
+        lastName: 'User.LastName',
+        groups: 'memberOf'
+      }
     }
   };
 

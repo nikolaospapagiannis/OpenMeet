@@ -80,7 +80,7 @@ export function useLiveTranscription({
 
   // Handle new transcript segment
   const handleTranscriptSegment = useCallback((segment: TranscriptSegment) => {
-    logger.info('New transcript segment received:', segment);
+    logger.info('New transcript segment received:', { segmentId: segment.id, speaker: segment.speaker });
 
     // Update current segment if not final
     if (!segment.isFinal) {
@@ -148,7 +148,7 @@ export function useLiveTranscription({
 
   // Handle bookmark created
   const handleBookmarkCreated = useCallback((bookmark: LiveBookmark) => {
-    logger.info('Bookmark created:', bookmark);
+    logger.info('Bookmark created:', { bookmarkId: bookmark.id, title: bookmark.title, type: bookmark.type });
     setBookmarks(prev => {
       // Check if already exists
       const exists = prev.some(b => b.id === bookmark.id);
@@ -180,7 +180,7 @@ export function useLiveTranscription({
 
   // Handle connection status
   const handleConnectionChange = useCallback((data: { status: string }) => {
-    logger.info('Connection status changed:', data.status);
+    logger.info('Connection status changed:', { connectionStatus: data.status });
     if (data.status === 'connected') {
       setConnectionStatus('connected');
     } else if (data.status === 'disconnected') {
@@ -205,7 +205,7 @@ export function useLiveTranscription({
     }
 
     setConnectionStatus('connecting');
-    logger.info('Connecting to live transcription session:', sessionIdRef.current);
+    logger.info('Connecting to live transcription session', { sessionId: sessionIdRef.current });
 
     // Connect to WebSocket service
     wsService.connect();

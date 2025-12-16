@@ -108,11 +108,14 @@ export function useProcessingStatus({
 
   // Update phase status based on progress
   const updatePhaseStatus = useCallback((update: ProcessingStatusUpdate) => {
-    setProcessingState(prev => {
-      const newPhases = [...prev.phases];
+    let previousPhase: string | undefined;
+
+    setProcessingState(currentState => {
+      previousPhase = currentState.currentPhase;
+      const newPhases = [...currentState.phases];
       const phaseIndex = newPhases.findIndex(p => p.id === update.phase);
 
-      if (phaseIndex === -1) return prev;
+      if (phaseIndex === -1) return currentState;
 
       // Update current phase
       newPhases[phaseIndex] = {
@@ -156,7 +159,7 @@ export function useProcessingStatus({
     });
 
     // Call phase change callback
-    if (onPhaseChange && prev.currentPhase !== update.phase) {
+    if (onPhaseChange && previousPhase !== update.phase) {
       onPhaseChange(update.phase);
     }
 
@@ -280,7 +283,7 @@ export function useProcessingStatus({
 
       // Processing update events
       socket.on(`meeting:${meetingId}:processing`, (data: ProcessingStatusUpdate) => {
-        logger.debug('Processing update received', data);
+        logger.debug('Processing update received', { phase: data.phase, progress: data.progress, message: data.message });
         updatePhaseStatus(data);
       });
 

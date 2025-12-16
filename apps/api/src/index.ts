@@ -97,8 +97,9 @@ import { ddosProtection } from './middleware/ddos-protection';
 import { combinedRateLimiting, rateLimitByEndpoint } from './middleware/rate-limit';
 import { getRateLimitMonitorService } from './services/RateLimitMonitorService';
 
-// Import WebSocket handler
+// Import WebSocket handlers
 import { LiveMeetingHandler } from './websocket/LiveMeetingHandler';
+import { createAdminRealtimeHandler, AdminRealtimeHandler } from './websocket/AdminRealtimeHandler';
 
 // Load environment variables
 dotenv.config();
@@ -312,6 +313,16 @@ async function setupGraphQL() {
 // Initialize Live Meeting Handler for WebSocket management
 const liveMeetingHandler = new LiveMeetingHandler(io);
 
+// Initialize Admin Realtime Handler for enterprise admin dashboard features
+// Provides: concurrent users tracking, analytics streaming, geographic data
+let adminRealtimeHandler: AdminRealtimeHandler | null = null;
+try {
+  adminRealtimeHandler = createAdminRealtimeHandler(io, redis);
+  logger.info('Admin realtime WebSocket handler initialized');
+} catch (error) {
+  logger.error('Failed to initialize admin realtime handler:', error);
+}
+
 // Initialize Live Collaboration Service for real-time features
 // DISABLED: WebSocket constructor issue in production - needs fix
 // import { liveCollaborationService } from './services/LiveCollaborationService';
@@ -372,16 +383,22 @@ async function connectRabbitMQ() {
 // Graceful shutdown
 async function gracefulShutdown() {
   logger.info('Starting graceful shutdown...');
-  
+
+  // Cleanup admin realtime handler (WebSocket subscribers)
+  if (adminRealtimeHandler) {
+    await adminRealtimeHandler.cleanup();
+    logger.info('Admin realtime handler cleaned up');
+  }
+
   // Close server
   httpServer.close(() => {
     logger.info('HTTP server closed');
   });
-  
+
   // Close database connections
   await prisma.$disconnect();
   redis.disconnect();
-  
+
   // Exit process
   process.exit(0);
 }

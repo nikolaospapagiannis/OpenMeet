@@ -425,11 +425,13 @@ export default function AlertsPage() {
     setDetailsDialogOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleString();
   };
 
-  const formatRelativeTime = (dateString: string) => {
+  const formatRelativeTime = (dateString: string | undefined | null) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();

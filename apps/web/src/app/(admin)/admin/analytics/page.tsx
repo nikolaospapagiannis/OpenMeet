@@ -18,6 +18,7 @@ import {
   Target,
   Clock,
   ChevronRight,
+  Radio,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+// Import real-time admin components
+import { ConcurrentUsersGauge } from '@/components/admin/ConcurrentUsersGauge';
+import { GeoDistributionMap } from '@/components/admin/GeoDistributionMap';
+import { RealtimeAnalyticsStream } from '@/components/admin/RealtimeAnalyticsStream';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AnalyticsOverview {
   totalUsers: number;
@@ -120,6 +127,10 @@ export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [showRealtime, setShowRealtime] = useState(true);
+
+  // Get auth token for WebSocket connections
+  const { token, isSuperAdmin } = useAuth();
 
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [engagement, setEngagement] = useState<EngagementMetrics | null>(null);
@@ -238,13 +249,15 @@ export default function AnalyticsPage() {
     }
   };
 
-  const formatNumber = (num: number): string => {
+  const formatNumber = (num: number | undefined | null): string => {
+    if (num === undefined || num === null) return '0';
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
     return num.toLocaleString();
   };
 
-  const formatCurrency = (amount: number): string => {
+  const formatCurrency = (amount: number | undefined | null): string => {
+    if (amount === undefined || amount === null) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
@@ -253,7 +266,8 @@ export default function AnalyticsPage() {
     }).format(amount);
   };
 
-  const formatPercent = (value: number): string => {
+  const formatPercent = (value: number | undefined | null): string => {
+    if (value === undefined || value === null) return '0%';
     return (value >= 0 ? '+' : '') + value.toFixed(1) + '%';
   };
 
@@ -446,6 +460,63 @@ export default function AnalyticsPage() {
           </p>
           <p className="text-sm text-slate-400">Total Revenue</p>
         </div>
+      </div>
+
+      {/* Real-time Dashboard Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-red-500 to-pink-600">
+              <Radio className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Real-time Dashboard</h2>
+              <p className="text-sm text-slate-400">Live metrics and event streaming</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRealtime(!showRealtime)}
+            className="border-white/10 text-slate-400 hover:text-white hover:bg-white/5"
+          >
+            {showRealtime ? 'Hide' : 'Show'} Real-time
+          </Button>
+        </div>
+
+        {showRealtime && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Concurrent Users Gauge */}
+            <ConcurrentUsersGauge
+              authToken={token ?? undefined}
+              maxCapacity={10000}
+              showOrganizations={isSuperAdmin}
+              showTrend={true}
+            />
+
+            {/* Geographic Distribution Map */}
+            <GeoDistributionMap
+              authToken={token ?? undefined}
+              metric="users"
+              refreshInterval={60000}
+              showHeatmap={true}
+              showTopCountries={8}
+              className="lg:col-span-2"
+            />
+          </div>
+        )}
+
+        {showRealtime && (
+          <div className="mt-6">
+            {/* Real-time Analytics Stream */}
+            <RealtimeAnalyticsStream
+              authToken={token ?? undefined}
+              maxEvents={100}
+              showFilters={true}
+              showStats={true}
+            />
+          </div>
+        )}
       </div>
 
       {/* Charts Row */}

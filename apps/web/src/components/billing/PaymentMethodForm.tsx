@@ -275,7 +275,7 @@ export function PaymentMethodForm({
       {/* Add new payment method */}
       {!showAddForm ? (
         <Button
-          variant="outline-glass"
+          variant="outline"
           size="default"
           onClick={() => setShowAddForm(true)}
           className="w-full"

@@ -15,7 +15,7 @@ interface Execution {
   status: 'success' | 'failed' | 'pending';
   trigger: string;
   triggerData: any;
-  actionResult: any;
+  actionResult?: any;
   error?: string;
   startedAt: string;
   completedAt?: string;
@@ -89,6 +89,7 @@ export function ExecutionHistory({ workflowId, workflowName, onBack }: Execution
               assignee: 'john@example.com',
             },
           },
+          actionResult: null,
           error: 'Failed to send SMS: Invalid phone number format',
           startedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           completedAt: new Date(Date.now() - 24 * 60 * 60 * 1000 + 2000).toISOString(),

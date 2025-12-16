@@ -45,7 +45,7 @@ interface TeamQualityDashboardProps {
     }[];
     recommendations: string[];
   };
-  period: 'week' | 'month' | 'quarter';
+  period: 'week' | 'month' | 'quarter' | 'year';
 }
 
 export default function TeamQualityDashboard({ trends, period }: TeamQualityDashboardProps) {

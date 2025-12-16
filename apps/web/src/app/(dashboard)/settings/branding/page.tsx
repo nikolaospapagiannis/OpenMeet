@@ -113,7 +113,7 @@ export default function BrandingPage() {
     }
   };
 
-  const handleVerifyDomain = async () => {
+  const handleVerifyDomain = async (): Promise<boolean> => {
     try {
       setVerifying(true);
       setSaveError(null);
@@ -132,11 +132,14 @@ export default function BrandingPage() {
       if (result.verified) {
         alert('Domain verified successfully!');
         setSaveSuccess(true);
+        return true;
       } else {
         setSaveError('Domain verification failed. Please check your DNS records.');
+        return false;
       }
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : 'Failed to verify domain');
+      return false;
     } finally {
       setVerifying(false);
     }

@@ -22,6 +22,7 @@ describe('MeetingFilters', () => {
       sortOrder: 'desc',
     },
     setFilter: jest.fn(),
+    setFilters: jest.fn(),
     clearFilters: jest.fn(),
     clearFilter: jest.fn(),
     activeFilterCount: 0,
@@ -456,11 +457,11 @@ describe('MeetingFilters', () => {
   });
 
   test('renders SavedFilters component', () => {
-    const filterStateWithSaved = {
+    const filterStateWithSaved: UseMeetingFiltersReturn = {
       ...mockFilterState,
       savedFilters: [
-        { id: '1', name: 'My Filter', filters: { status: 'completed' } },
-        { id: '2', name: 'Team Meetings', filters: { platform: 'zoom' } },
+        { id: '1', name: 'My Filter', filters: { status: 'completed' }, createdAt: new Date().toISOString() },
+        { id: '2', name: 'Team Meetings', filters: { platform: 'zoom' }, createdAt: new Date().toISOString() },
       ],
     };
 

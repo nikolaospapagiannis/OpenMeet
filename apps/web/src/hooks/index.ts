@@ -7,6 +7,14 @@ export { useProfileSettings } from './useProfileSettings';
 export { usePWA } from './usePWA';
 export { useQuality } from './useQuality';
 
+// Admin real-time hooks
+export { useAuth } from './useAuth';
+export {
+  useAdminWebSocket,
+  useConcurrentUsersSocket,
+  useAnalyticsStreamSocket,
+} from './useAdminWebSocket';
+
 // Export types
 export type { UseFileUploadOptions, UploadProgress, UploadResult } from './useFileUpload';
 export type { Message, Conversation, MeetingFilter } from './useAIChat';
@@ -19,3 +27,9 @@ export type {
   TeamQualityData,
   QualityAnalytics
 } from './useQuality';
+
+export type {
+  ConnectionState,
+  WebSocketConfig,
+  UseAdminWebSocketReturn
+} from './useAdminWebSocket';

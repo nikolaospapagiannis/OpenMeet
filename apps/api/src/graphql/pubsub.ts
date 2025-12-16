@@ -1,11 +1,14 @@
 /**
  * GraphQL PubSub - Real Redis-backed subscriptions
  * NO FAKE implementations - uses actual Redis connection
+ *
+ * Also integrates with AnalyticsEventPublisher for admin dashboard real-time events
  */
 
 import { RedisPubSub } from 'graphql-redis-subscriptions';
 import Redis from 'ioredis';
 import { logger } from '../utils/logger';
+import { getAnalyticsEventPublisher, AnalyticsEventPublisher } from '../services/AnalyticsEventPublisher';
 
 // Redis connection options from environment
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
@@ -27,6 +30,19 @@ const redisOptions = {
 // Separate connections for pub and sub (Redis best practice)
 const publisher = new Redis(redisOptions);
 const subscriber = new Redis(redisOptions);
+
+// Analytics event publisher for admin dashboard real-time events
+let analyticsPublisher: AnalyticsEventPublisher | null = null;
+
+/**
+ * Get or create the analytics event publisher singleton
+ */
+function getAnalyticsPublisher(): AnalyticsEventPublisher {
+  if (!analyticsPublisher) {
+    analyticsPublisher = getAnalyticsEventPublisher(publisher);
+  }
+  return analyticsPublisher;
+}
 
 // Create RedisPubSub instance
 export const pubsub = new RedisPubSub({
@@ -105,11 +121,25 @@ export async function publishMeetingUpdated(payload: MeetingUpdatedPayload): Pro
 
 /**
  * Publish transcript progress event (for live transcription)
+ * Also publishes to admin analytics stream for real-time dashboard
  */
-export async function publishTranscriptProgress(payload: TranscriptProgressPayload): Promise<void> {
+export async function publishTranscriptProgress(
+  payload: TranscriptProgressPayload,
+  organizationId?: string
+): Promise<void> {
   await pubsub.publish(CHANNELS.TRANSCRIPT_PROGRESS, {
     transcriptProgress: payload,
   });
+
+  // Publish to admin analytics stream for real-time dashboard
+  if (organizationId) {
+    const analytics = getAnalyticsPublisher();
+    await analytics.publishTranscriptionProgress(organizationId, {
+      meetingId: payload.meetingId,
+      progress: payload.progress,
+      stage: payload.isFinal ? 'analyzing' : 'transcribing',
+    });
+  }
 }
 
 /**
@@ -132,11 +162,34 @@ export async function publishCommentAdded(payload: CommentAddedPayload): Promise
 
 /**
  * Publish meeting status changed event
+ * Also publishes to admin analytics stream for real-time dashboard
  */
 export async function publishMeetingStatusChanged(payload: MeetingStatusChangedPayload): Promise<void> {
+  // Publish to GraphQL subscriptions
   await pubsub.publish(CHANNELS.MEETING_STATUS_CHANGED, {
     meetingStatusChanged: payload,
   });
+
+  // Publish to admin analytics stream for real-time dashboard
+  const analytics = getAnalyticsPublisher();
+  const organizationId = payload.meeting?.organizationId;
+
+  if (organizationId) {
+    if (payload.newStatus === 'in_progress' || payload.newStatus === 'live') {
+      await analytics.publishMeetingStarted(organizationId, {
+        meetingId: payload.meetingId,
+        title: payload.meeting?.title || 'Untitled Meeting',
+        participantCount: payload.meeting?.participantCount || 0,
+      });
+    } else if (payload.newStatus === 'completed' || payload.newStatus === 'ended') {
+      await analytics.publishMeetingEnded(organizationId, {
+        meetingId: payload.meetingId,
+        duration: payload.meeting?.duration || 0,
+        participantCount: payload.meeting?.participantCount || 0,
+        transcriptionStatus: payload.meeting?.transcriptionStatus || 'none',
+      });
+    }
+  }
 }
 
 // ============================================================================

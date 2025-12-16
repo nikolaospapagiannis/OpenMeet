@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -101,7 +101,7 @@ export default function ExtensionStatus({ installed, version, onRefresh }: Exten
 
   const statusIcon = useMemo(() => {
     if (!installed) return <XCircle className="h-5 w-5" />;
-    const statusIcons: Record<ConnectionStatus, JSX.Element> = {
+    const statusIcons: Record<ConnectionStatus, React.ReactElement> = {
       connected: <CheckCircle className="h-5 w-5" />,
       connecting: <RefreshCw className="h-5 w-5 animate-spin" />,
       disconnected: <AlertCircle className="h-5 w-5" />
@@ -110,7 +110,7 @@ export default function ExtensionStatus({ installed, version, onRefresh }: Exten
   }, [installed, connectionStatus]);
 
   const connectionIcon = useMemo(() => {
-    const connectionIcons: Record<ConnectionStatus, JSX.Element> = {
+    const connectionIcons: Record<ConnectionStatus, React.ReactElement> = {
       connected: <Wifi className="h-4 w-4" />,
       connecting: <Activity className="h-4 w-4 animate-pulse" />,
       disconnected: <WifiOff className="h-4 w-4" />

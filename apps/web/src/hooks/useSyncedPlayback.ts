@@ -19,7 +19,7 @@ export interface TranscriptSegment {
 
 interface UseSyncedPlaybackProps {
   segments: TranscriptSegment[];
-  videoRef: RefObject<HTMLVideoElement | HTMLAudioElement>;
+  videoRef: RefObject<HTMLVideoElement | HTMLAudioElement | null>;
 }
 
 interface UseSyncedPlaybackReturn {
@@ -43,7 +43,7 @@ export function useSyncedPlayback({
   const [currentWord, setCurrentWord] = useState<{ word: string; index: number } | null>(null);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
 
-  const frameRef = useRef<number>();
+  const frameRef = useRef<number | undefined>(undefined);
 
   // Update current time using requestAnimationFrame for smooth updates
   useEffect(() => {

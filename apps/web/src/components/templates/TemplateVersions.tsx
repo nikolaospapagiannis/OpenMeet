@@ -18,7 +18,8 @@ import {
   ArrowRight,
   GitCommit,
   GitMerge,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

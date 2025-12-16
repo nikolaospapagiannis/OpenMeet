@@ -79,7 +79,7 @@ export default function RateLimitsPage() {
             <OverageWarning
               alerts={overageAlerts}
               currentPlan="Free"
-              recommendedPlan={recommendedPlan}
+              recommendedPlan={recommendedPlan ?? undefined}
               onUpgrade={() => console.log('Upgrade clicked')}
             />
           </div>

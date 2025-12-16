@@ -345,7 +345,8 @@ export default function AdminUsersPage() {
     });
   };
 
-  const formatStorage = (bytes: number) => {
+  const formatStorage = (bytes: number | undefined | null) => {
+    if (bytes === undefined || bytes === null) return '0 B';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

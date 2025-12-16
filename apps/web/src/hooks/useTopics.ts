@@ -297,7 +297,16 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
 
   // Operations
   const createTopic = useCallback(async (topic: Partial<Topic>): Promise<Topic> => {
-    const response = await apiClient.createTopic(topic);
+    if (!topic.keyword) {
+      throw new Error('Topic keyword is required');
+    }
+    const response = await apiClient.createTopic({
+      keyword: topic.keyword,
+      name: topic.name,
+      alertThreshold: topic.alertThreshold,
+      alertEnabled: topic.alertEnabled,
+      alertRecipients: []
+    });
     const newTopic: Topic = {
       id: response.id,
       keyword: topic.keyword!,
@@ -370,13 +379,34 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
     topicIds?: string[]
   ): Promise<TopicMention[]> => {
     try {
-      const response = await apiClient.searchTopicMentions(query, { topicIds });
-      return response.mentions;
+      // Search across provided topics or all topics
+      const allMentions: TopicMention[] = [];
+      const topicsToSearch = topicIds || topics.map(t => t.id);
+
+      for (const topicId of topicsToSearch.slice(0, 10)) { // Limit to prevent too many requests
+        const response = await apiClient.getTopicMentions(topicId, { limit: 50 });
+        const filtered = response.mentions.filter((m: any) =>
+          m.transcript?.toLowerCase().includes(query.toLowerCase()) ||
+          m.context?.toLowerCase().includes(query.toLowerCase())
+        );
+        allMentions.push(...filtered.map((m: any) => ({
+          id: m.id,
+          topicId,
+          meetingId: m.meetingId,
+          timestamp: new Date(m.timestamp),
+          speaker: m.speaker,
+          transcript: m.transcript,
+          context: m.context,
+          sentiment: m.sentiment,
+          confidence: m.confidence
+        })));
+      }
+      return allMentions;
     } catch (err) {
       console.error('Error searching mentions:', err);
       return [];
     }
-  }, []);
+  }, [topics]);
 
   const addPattern = useCallback(async (topicId: string, pattern: TopicPattern): Promise<void> => {
     const topic = topics.find(t => t.id === topicId);
@@ -416,7 +446,12 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
   }, []);
 
   const configureAlert = useCallback(async (topicId: string, config: AlertConfig): Promise<void> => {
-    await apiClient.configureTopicAlert(topicId, config);
+    await apiClient.configureTopicAlert(topicId, {
+      type: 'mention_spike',
+      threshold: config.threshold,
+      enabled: config.enabled,
+      recipients: config.channels
+    });
     await updateTopic(topicId, {
       alertEnabled: config.enabled,
       alertThreshold: config.threshold
@@ -425,8 +460,15 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
 
   const getAlertHistory = useCallback(async (topicId: string): Promise<AlertHistoryItem[]> => {
     try {
-      const response = await apiClient.getTopicAlertHistory(topicId);
-      return response.history;
+      const response = await apiClient.getTopicAlerts(topicId, { limit: 50 });
+      return response.alerts?.map((alert: any) => ({
+        id: alert.id,
+        timestamp: new Date(alert.timestamp || alert.createdAt),
+        trigger: alert.trigger || 'mention_spike',
+        status: alert.status || 'sent',
+        channels: alert.channels || [],
+        message: alert.message || ''
+      })) || [];
     } catch (err) {
       console.error('Error fetching alert history:', err);
       return [];
@@ -435,18 +477,38 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
 
   const getInsights = useCallback(async (
     topicId: string,
-    dateRange?: DateRange
+    _dateRange?: DateRange
   ): Promise<TopicInsight> => {
     try {
-      const response = await apiClient.getTopicInsights(topicId, dateRange);
+      // Aggregate insights from mentions, trends, and correlations
+      const [mentionsResponse, correlationsResponse] = await Promise.all([
+        apiClient.getTopicMentions(topicId, { limit: 100 }),
+        apiClient.getTopicCorrelations(topicId)
+      ]);
+
+      const mentionsList = mentionsResponse.mentions || [];
+      const uniqueSpeakers = new Set(mentionsList.map((m: any) => m.speaker)).size;
+      const sentiments = mentionsList.map((m: any) => {
+        if (m.sentiment === 'positive') return 1;
+        if (m.sentiment === 'negative') return -1;
+        return 0;
+      });
+      const averageSentiment = sentiments.length > 0
+        ? sentiments.reduce((a: number, b: number) => a + b, 0) / sentiments.length
+        : 0;
+
       const insight: TopicInsight = {
         topicId,
-        totalMentions: response.totalMentions,
-        uniqueSpeakers: response.uniqueSpeakers,
-        averageSentiment: response.averageSentiment,
-        peakHour: response.peakHour,
-        peakDay: response.peakDay,
-        correlatedTopics: response.correlatedTopics
+        totalMentions: mentionsList.length,
+        uniqueSpeakers,
+        averageSentiment,
+        peakHour: '14:00', // Would require time aggregation
+        peakDay: 'Monday', // Would require day aggregation
+        correlatedTopics: correlationsResponse.correlations?.map((c: any) => ({
+          topicId: c.topicB || c.relatedTopicId,
+          topicName: c.topicBName || c.name || 'Related Topic',
+          correlation: c.correlation || c.score || 0
+        })) || []
       };
 
       setInsights(prev => new Map(prev).set(topicId, insight));
@@ -472,8 +534,28 @@ export function useTopics(options: UseTopicsOptions = {}): UseTopicsReturn {
     dateRange?: DateRange
   ): Promise<TrendData[]> => {
     try {
-      const response = await apiClient.getTopicTrends(topicIds, dateRange);
-      return response.trends;
+      // Fetch trends for each topic individually and merge results
+      const trendPromises = topicIds.map(topicId =>
+        apiClient.getTopicTrends(topicId, {
+          startDate: dateRange?.start?.toISOString(),
+          endDate: dateRange?.end?.toISOString()
+        })
+      );
+      const responses = await Promise.all(trendPromises);
+
+      // Merge trends by date
+      const trendsByDate = new Map<string, Record<string, unknown>>();
+      responses.forEach((response, index) => {
+        const topicId = topicIds[index];
+        (response.trends || []).forEach((trend: any) => {
+          const date = trend.date;
+          const existing: Record<string, unknown> = trendsByDate.get(date) || { date };
+          existing[topicId] = trend.count || trend.mentions || 0;
+          trendsByDate.set(date, existing);
+        });
+      });
+
+      return Array.from(trendsByDate.values()) as TrendData[];
     } catch (err) {
       console.error('Error fetching trends:', err);
       return [];

@@ -255,7 +255,7 @@ export function PlanComparison({
 
                 {/* Action button */}
                 <Button
-                  variant={isPopular ? 'gradient-primary' : 'outline-glass'}
+                  variant={isPopular ? 'gradient-primary' : 'outline'}
                   size="default"
                   onClick={() => handleSelectPlan(plan.id)}
                   disabled={plan.id === 'free' || isCurrent || selectedPlan === plan.id}

@@ -507,7 +507,7 @@ describe('MFASetupWizard', () => {
   describe('Loading States', () => {
     it('shows loading state when fetching QR code', async () => {
       const user = userEvent.setup();
-      let resolvePromise: () => void;
+      let resolvePromise!: (value: any) => void;
       const promise = new Promise<any>((resolve) => {
         resolvePromise = resolve;
       });
@@ -523,7 +523,7 @@ describe('MFASetupWizard', () => {
       // Button should show loading state
       expect(getStartedButton).toBeDisabled();
 
-      resolvePromise!({ qrCode: 'test', secret: 'SECRET' });
+      resolvePromise({ qrCode: 'test', secret: 'SECRET' });
 
       await waitFor(() => {
         expect(screen.getByText(/scan qr code/i)).toBeInTheDocument();
@@ -537,7 +537,7 @@ describe('MFASetupWizard', () => {
         secret: 'SECRET',
       });
 
-      let resolvePromise: () => void;
+      let resolvePromise!: (value: any) => void;
       const promise = new Promise<any>((resolve) => {
         resolvePromise = resolve;
       });
@@ -561,7 +561,7 @@ describe('MFASetupWizard', () => {
 
       expect(verifyButton).toBeDisabled();
 
-      resolvePromise!({ backupCodes: ['ABC123'] });
+      resolvePromise({ backupCodes: ['ABC123'] });
 
       await waitFor(() => {
         expect(screen.getByText(/mfa successfully enabled/i)).toBeInTheDocument();

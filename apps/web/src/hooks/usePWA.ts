@@ -306,7 +306,7 @@ export const usePWA = () => {
       // Subscribe
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey
+        applicationServerKey: convertedVapidKey.buffer.slice(0) as ArrayBuffer
       });
 
       return subscription;

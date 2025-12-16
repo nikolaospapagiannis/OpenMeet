@@ -142,7 +142,15 @@ const actionConfigs: Record<string, any> = {
 };
 
 // Condition configurations
-const conditionTypes = {
+interface ConditionType {
+  name: string;
+  operators: string[];
+  valueType: string;
+  unit?: string;
+  options?: string[];
+}
+
+const conditionTypes: Record<string, ConditionType> = {
   participant_count: {
     name: 'Participant Count',
     operators: ['equals', 'greater_than', 'less_than', 'between'],
@@ -393,54 +401,59 @@ export function NodeEditor({ node, onUpdate, onDelete, onClose }: NodeEditorProp
             </div>
 
             {formData.conditionType && (
-              <>
-                <div>
-                  <label className="label-m text-[var(--ff-text-secondary)] block mb-2">
-                    Operator
-                  </label>
-                  <select
-                    value={formData.operator || ''}
-                    onChange={(e) => handleFieldChange('operator', e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--ff-bg-dark)] border border-[var(--ff-border)] rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--ff-purple-500)]"
-                  >
-                    <option value="">Select operator...</option>
-                    {conditionTypes[formData.conditionType as keyof typeof conditionTypes].operators.map((op: string) => (
-                      <option key={op} value={op}>
-                        {op.replace('_', ' ')}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {formData.operator && !['is_weekend', 'is_weekday'].includes(formData.operator) && (
-                  <div>
-                    <label className="label-m text-[var(--ff-text-secondary)] block mb-2">
-                      Value {conditionTypes[formData.conditionType as keyof typeof conditionTypes].unit && `(${conditionTypes[formData.conditionType as keyof typeof conditionTypes].unit})`}
-                    </label>
-                    {conditionTypes[formData.conditionType as keyof typeof conditionTypes].valueType === 'select' ? (
+              (() => {
+                const currentCondition = conditionTypes[formData.conditionType as keyof typeof conditionTypes];
+                return (
+                  <>
+                    <div>
+                      <label className="label-m text-[var(--ff-text-secondary)] block mb-2">
+                        Operator
+                      </label>
                       <select
-                        value={formData.value || ''}
-                        onChange={(e) => handleFieldChange('value', e.target.value)}
+                        value={formData.operator || ''}
+                        onChange={(e) => handleFieldChange('operator', e.target.value)}
                         className="w-full px-3 py-2 bg-[var(--ff-bg-dark)] border border-[var(--ff-border)] rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--ff-purple-500)]"
                       >
-                        <option value="">Select...</option>
-                        {conditionTypes[formData.conditionType as keyof typeof conditionTypes].options?.map((option: string) => (
-                          <option key={option} value={option}>
-                            {option}
+                        <option value="">Select operator...</option>
+                        {currentCondition.operators.map((op: string) => (
+                          <option key={op} value={op}>
+                            {op.replace('_', ' ')}
                           </option>
                         ))}
                       </select>
-                    ) : (
-                      <input
-                        type={conditionTypes[formData.conditionType as keyof typeof conditionTypes].valueType}
-                        value={formData.value || ''}
-                        onChange={(e) => handleFieldChange('value', e.target.value)}
-                        className="w-full px-3 py-2 bg-[var(--ff-bg-dark)] border border-[var(--ff-border)] rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--ff-purple-500)]"
-                      />
+                    </div>
+
+                    {formData.operator && !['is_weekend', 'is_weekday'].includes(formData.operator) && (
+                      <div>
+                        <label className="label-m text-[var(--ff-text-secondary)] block mb-2">
+                          Value {currentCondition.unit && `(${currentCondition.unit})`}
+                        </label>
+                        {currentCondition.valueType === 'select' ? (
+                          <select
+                            value={formData.value || ''}
+                            onChange={(e) => handleFieldChange('value', e.target.value)}
+                            className="w-full px-3 py-2 bg-[var(--ff-bg-dark)] border border-[var(--ff-border)] rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--ff-purple-500)]"
+                          >
+                            <option value="">Select...</option>
+                            {currentCondition.options?.map((option: string) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type={currentCondition.valueType}
+                            value={formData.value || ''}
+                            onChange={(e) => handleFieldChange('value', e.target.value)}
+                            className="w-full px-3 py-2 bg-[var(--ff-bg-dark)] border border-[var(--ff-border)] rounded-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--ff-purple-500)]"
+                          />
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-              </>
+                  </>
+                );
+              })()
             )}
           </div>
         ) : (

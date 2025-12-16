@@ -82,7 +82,7 @@ export function useLiveSentiment({
   const [error, setError] = useState<string | null>(null);
 
   const socketRef = useRef<Socket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const connect = useCallback(() => {
     // Clean up existing connection

@@ -16,7 +16,8 @@ import {
   PieChart,
   ArrowUp,
   ArrowDown,
-  AlertCircle
+  AlertCircle,
+  Hash
 } from 'lucide-react';
 
 import { CardGlass, CardGlassContent, CardGlassHeader, CardGlassTitle } from '@/components/ui/card-glass';
