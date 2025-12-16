@@ -53,7 +53,7 @@ import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { Readable } from 'stream';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 const redis = new Redis({

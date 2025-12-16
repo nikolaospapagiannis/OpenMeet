@@ -9,7 +9,7 @@ import { authMiddleware, optionalAuth } from '../middleware/auth';
 import { rateLimitByEndpoint } from '../middleware/rate-limit';
 import { logger } from '../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Type definitions for API responses

@@ -12,7 +12,7 @@ import { authMiddleware } from '../middleware/auth';
 import { rateLimitByEndpoint } from '../middleware/rate-limit';
 import { logger } from '../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Helper function to map category strings to TemplateType enum

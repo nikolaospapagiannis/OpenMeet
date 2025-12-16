@@ -403,10 +403,15 @@ export class PredictiveInsightsService {
             score: predictionResult.prediction.riskScore,
             riskLevel: predictionResult.prediction.riskLevel,
             factors: predictionResult.prediction.riskFactors.map(f => f.factor),
-            riskFactors: predictionResult.prediction.riskFactors,
+            riskFactors: predictionResult.prediction.riskFactors.map(f => ({
+              factor: f.factor,
+              impact: f.impact,
+              severity: f.severity,
+              description: f.description,
+            })),
             timeToChurn: predictionResult.prediction.timeToChurn,
             confidenceLevel: predictionResult.prediction.confidenceLevel,
-            timestamp: new Date(),
+            timestamp: new Date().toISOString(),
           },
         },
         metadata: {
@@ -507,8 +512,10 @@ export class PredictiveInsightsService {
         ? (new Date(meeting.actualEndAt).getTime() - new Date(meeting.actualStartAt).getTime()) / 60000
         : 0;
 
-      // Extract analytics data if available
-      const analyticsData = meeting.analytics as Record<string, unknown> | null;
+      // Extract analytics data if available (analytics is an array)
+      const analyticsData = meeting.analytics?.[0]
+        ? (meeting.analytics[0] as unknown as Record<string, unknown>)
+        : null;
       const talkTimeRatio = analyticsData?.talkTimeRatio as number ?? null;
       const sentimentScore = analyticsData?.sentimentScore as number ?? null;
 

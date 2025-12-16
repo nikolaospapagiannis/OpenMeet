@@ -38,9 +38,8 @@ router.get(
     query('userId').optional().isUUID(),
     query('meetingId').optional().isUUID(),
     query('search').optional().isString().trim(),
-    query('tags').optional().isString(),
-    query('isFavorite').optional().isBoolean(),
-    query('sortBy').optional().isIn(['recent', 'duration', 'views', 'shares']),
+    query('category').optional().isString(),
+    query('sortBy').optional().isIn(['recent', 'duration', 'views', 'downloads']),
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt()
   ],
@@ -58,8 +57,7 @@ router.get(
       const {
         meetingId,
         search,
-        tags,
-        isFavorite,
+        category,
         sortBy = 'recent',
         page = 1,
         limit = 20
@@ -67,16 +65,15 @@ router.get(
 
       // Build filter conditions
       const where: any = {
-        userId,
-        deletedAt: null
+        userId
       };
 
       if (meetingId) {
         where.meetingId = meetingId;
       }
 
-      if (isFavorite !== undefined) {
-        where.isFavorite = isFavorite === 'true';
+      if (category) {
+        where.category = category;
       }
 
       if (search) {
@@ -86,24 +83,17 @@ router.get(
         ];
       }
 
-      if (tags) {
-        const tagArray = (tags as string).split(',').map(t => t.trim());
-        where.tags = {
-          hasSome: tagArray
-        };
-      }
-
       // Build sort order
       let orderBy: any = {};
       switch (sortBy) {
         case 'duration':
-          orderBy = { duration: 'desc' };
+          orderBy = { endTimeSeconds: 'desc' };
           break;
         case 'views':
-          orderBy = { views: 'desc' };
+          orderBy = { viewCount: 'desc' };
           break;
-        case 'shares':
-          orderBy = { shares: 'desc' };
+        case 'downloads':
+          orderBy = { downloadCount: 'desc' };
           break;
         case 'recent':
         default:
@@ -116,15 +106,7 @@ router.get(
           where,
           orderBy,
           skip: ((page as number) - 1) * (limit as number),
-          take: limit as number,
-          include: {
-            meeting: {
-              select: {
-                title: true,
-                recordedAt: true
-              }
-            }
-          }
+          take: limit as number
         }),
         prisma.videoClip.count({ where })
       ]);
@@ -132,21 +114,21 @@ router.get(
       // Format response
       const formattedClips = clips.map(clip => ({
         id: clip.id,
-        title: clip.title,
+        title: clip.title || 'Untitled Clip',
         description: clip.description,
         meetingId: clip.meetingId,
-        meetingTitle: clip.meeting.title,
-        videoUrl: clip.videoUrl,
+        fileUrl: clip.fileUrl,
         thumbnailUrl: clip.thumbnailUrl,
-        startTime: clip.startTime,
-        endTime: clip.endTime,
-        duration: clip.endTime - clip.startTime,
+        startTime: clip.startTime || clip.startTimeSeconds,
+        endTime: clip.endTime || clip.endTimeSeconds,
+        duration: (clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds),
+        category: clip.category,
+        importance: clip.importance,
+        sentiment: clip.sentiment,
         createdAt: clip.createdAt,
         updatedAt: clip.updatedAt,
-        isFavorite: clip.isFavorite || false,
-        tags: clip.tags || [],
-        views: clip.views || 0,
-        shares: clip.shares || 0
+        viewCount: clip.viewCount,
+        downloadCount: clip.downloadCount
       }));
 
       res.json({
@@ -182,7 +164,7 @@ router.post(
     body('endTime').isFloat({ min: 0 }).withMessage('End time must be positive'),
     body('title').isString().trim().notEmpty().withMessage('Title is required'),
     body('description').optional().isString().trim(),
-    body('tags').optional().isArray(),
+    body('category').optional().isString(),
     body('isPublic').optional().isBoolean(),
     body('includeTranscript').optional().isBoolean()
   ],
@@ -203,7 +185,7 @@ router.post(
         endTime,
         title,
         description,
-        tags = [],
+        category,
         isPublic = false,
         includeTranscript = true
       } = req.body;
@@ -256,10 +238,11 @@ router.post(
           description,
           startTime,
           endTime,
-          tags,
+          startTimeSeconds: Math.floor(startTime),
+          endTimeSeconds: Math.floor(endTime),
+          category,
           isPublic,
-          status: 'processing',
-          videoUrl: '', // Will be updated after processing
+          fileUrl: '', // Will be updated after processing
           thumbnailUrl: '' // Will be updated after processing
         }
       });
@@ -314,16 +297,7 @@ router.get(
       const clip = await prisma.videoClip.findFirst({
         where: {
           id,
-          userId,
-          deletedAt: null
-        },
-        include: {
-          meeting: {
-            select: {
-              title: true,
-              recordedAt: true
-            }
-          }
+          userId
         }
       });
 
@@ -337,14 +311,14 @@ router.get(
       // Increment view count
       await prisma.videoClip.update({
         where: { id },
-        data: { views: (clip.views || 0) + 1 }
+        data: { viewCount: clip.viewCount + 1 }
       });
 
       res.json({
         success: true,
         clip: {
           ...clip,
-          duration: clip.endTime - clip.startTime
+          duration: (clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds)
         }
       });
 
@@ -368,7 +342,7 @@ router.patch(
     param('id').isUUID(),
     body('title').optional().isString().trim().notEmpty(),
     body('description').optional().isString().trim(),
-    body('tags').optional().isArray(),
+    body('category').optional().isString(),
     body('isPublic').optional().isBoolean()
   ],
   async (req: Request, res: Response) => {
@@ -387,7 +361,7 @@ router.patch(
 
       // Verify ownership
       const clip = await prisma.videoClip.findFirst({
-        where: { id, userId, deletedAt: null }
+        where: { id, userId }
       });
 
       if (!clip) {
@@ -423,7 +397,7 @@ router.patch(
 
 /**
  * DELETE /api/clips/:id
- * Soft delete a clip
+ * Delete a clip
  */
 router.delete(
   '/:id',
@@ -435,7 +409,7 @@ router.delete(
 
       // Verify ownership
       const clip = await prisma.videoClip.findFirst({
-        where: { id, userId, deletedAt: null }
+        where: { id, userId }
       });
 
       if (!clip) {
@@ -445,17 +419,14 @@ router.delete(
         });
       }
 
-      // Soft delete
-      await prisma.videoClip.update({
-        where: { id },
-        data: {
-          deletedAt: new Date()
-        }
+      // Delete clip
+      await prisma.videoClip.delete({
+        where: { id }
       });
 
       // Clean up storage (async)
-      if (clip.videoUrl) {
-        storageService.deleteFile(clip.videoUrl).catch(err => {
+      if (clip.fileUrl) {
+        storageService.deleteFile(clip.fileUrl).catch(err => {
           logger.error('Error deleting clip file:', err);
         });
       }
@@ -470,53 +441,6 @@ router.delete(
       res.status(500).json({
         success: false,
         error: 'Failed to delete clip'
-      });
-    }
-  }
-);
-
-/**
- * PATCH /api/clips/:id/favorite
- * Toggle favorite status
- */
-router.patch(
-  '/:id/favorite',
-  [
-    param('id').isUUID(),
-    body('isFavorite').isBoolean()
-  ],
-  async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-      const { isFavorite } = req.body;
-      const userId = (req as any).user.userId;
-
-      const clip = await prisma.videoClip.findFirst({
-        where: { id, userId, deletedAt: null }
-      });
-
-      if (!clip) {
-        return res.status(404).json({
-          success: false,
-          error: 'Clip not found'
-        });
-      }
-
-      await prisma.videoClip.update({
-        where: { id },
-        data: { isFavorite }
-      });
-
-      res.json({
-        success: true,
-        isFavorite
-      });
-
-    } catch (error) {
-      logger.error('Error updating favorite status:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update favorite status'
       });
     }
   }
@@ -565,15 +489,7 @@ router.post(
           OR: [
             { userId },
             { isPublic: true }
-          ],
-          deletedAt: null
-        },
-        include: {
-          meeting: {
-            select: {
-              title: true
-            }
-          }
+          ]
         }
       });
 
@@ -583,6 +499,12 @@ router.post(
           error: 'Clip not found'
         });
       }
+
+      // Get meeting title for context
+      const meeting = await prisma.meeting.findUnique({
+        where: { id: clip.meetingId || '' },
+        select: { title: true }
+      });
 
       // Generate share link
       const shareToken = await generateShareToken(id, expirationDays);
@@ -599,7 +521,7 @@ router.post(
               clipTitle: clip.title,
               clipUrl: shareUrl,
               message,
-              duration: Math.floor(clip.endTime - clip.startTime),
+              duration: Math.floor((clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds)),
               senderName: (req as any).user.name
             }
           });
@@ -621,11 +543,11 @@ router.post(
                 fields: [
                   {
                     type: 'mrkdwn',
-                    text: `*Meeting:* ${clip.meeting.title}`
+                    text: `*Meeting:* ${meeting?.title || 'Unknown'}`
                   },
                   {
                     type: 'mrkdwn',
-                    text: `*Duration:* ${Math.floor(clip.endTime - clip.startTime)}s`
+                    text: `*Duration:* ${Math.floor((clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds))}s`
                   }
                 ]
               },
@@ -659,14 +581,14 @@ router.post(
             card: {
               '@type': 'MessageCard',
               '@context': 'http://schema.org/extensions',
-              summary: clip.title,
+              summary: clip.title || 'Video Clip',
               themeColor: '7B3FF2',
               sections: [
                 {
                   activityTitle: clip.title,
-                  activitySubtitle: `From: ${clip.meeting.title}`,
+                  activitySubtitle: `From: ${meeting?.title || 'Unknown Meeting'}`,
                   activityImage: clip.thumbnailUrl,
-                  text: message || `Check out this ${Math.floor(clip.endTime - clip.startTime)} second clip`
+                  text: message || `Check out this ${Math.floor((clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds))} second clip`
                 }
               ],
               potentialAction: [
@@ -685,12 +607,6 @@ router.post(
           });
           break;
       }
-
-      // Update share count
-      await prisma.videoClip.update({
-        where: { id },
-        data: { shares: (clip.shares || 0) + 1 }
-      });
 
       logger.info('Clip shared successfully', {
         clipId: id,
@@ -738,8 +654,7 @@ router.post(
           OR: [
             { userId },
             { isPublic: true }
-          ],
-          deletedAt: null
+          ]
         }
       });
 
@@ -788,7 +703,7 @@ router.get(
       const userId = (req as any).user.userId;
 
       const clip = await prisma.videoClip.findFirst({
-        where: { id, userId, deletedAt: null }
+        where: { id, userId }
       });
 
       if (!clip) {
@@ -800,18 +715,16 @@ router.get(
 
       // Get processing job status if still processing
       let processingProgress = 0;
-      if (clip.status === 'processing') {
-        const job = await videoProcessingQueue.getJob(`clip-${id}`);
-        if (job) {
-          processingProgress = job.progress || 0;
-        }
+      const job = await videoProcessingQueue.getJob(`clip-${id}`);
+      if (job) {
+        processingProgress = job.progress || 0;
       }
 
       res.json({
         success: true,
-        status: clip.status,
+        status: clip.fileUrl ? 'completed' : 'processing',
         progress: processingProgress,
-        clipUrl: clip.videoUrl || null,
+        clipUrl: clip.fileUrl || null,
         thumbnailUrl: clip.thumbnailUrl || null
       });
 
@@ -843,8 +756,7 @@ router.get(
           OR: [
             { userId },
             { isPublic: true }
-          ],
-          deletedAt: null
+          ]
         }
       });
 
@@ -855,19 +767,25 @@ router.get(
         });
       }
 
-      if (!clip.videoUrl) {
+      if (!clip.fileUrl) {
         return res.status(404).json({
           success: false,
           error: 'Clip video not available'
         });
       }
 
+      // Increment download count
+      await prisma.videoClip.update({
+        where: { id },
+        data: { downloadCount: clip.downloadCount + 1 }
+      });
+
       // Get download URL from storage service
       const downloadUrl = await storageService.getSignedUrl(
-        clip.videoUrl,
+        clip.fileUrl,
         {
           action: 'download',
-          filename: `${clip.title.replace(/[^a-z0-9]/gi, '_')}.mp4`
+          filename: `${clip.title?.replace(/[^a-z0-9]/gi, '_') || 'clip'}.mp4`
         }
       );
 
@@ -905,16 +823,7 @@ router.get(
       // Get clip
       const clip = await prisma.videoClip.findFirst({
         where: {
-          id: decoded.clipId,
-          deletedAt: null
-        },
-        include: {
-          meeting: {
-            select: {
-              title: true,
-              recordedAt: true
-            }
-          }
+          id: decoded.clipId
         }
       });
 
@@ -928,7 +837,13 @@ router.get(
       // Increment view count
       await prisma.videoClip.update({
         where: { id: decoded.clipId },
-        data: { views: (clip.views || 0) + 1 }
+        data: { viewCount: clip.viewCount + 1 }
+      });
+
+      // Get meeting title
+      const meeting = await prisma.meeting.findUnique({
+        where: { id: clip.meetingId || '' },
+        select: { title: true }
       });
 
       // Return clip data based on token permissions
@@ -938,24 +853,19 @@ router.get(
           id: clip.id,
           title: clip.title,
           description: clip.description,
-          videoUrl: clip.videoUrl,
+          fileUrl: clip.fileUrl,
           thumbnailUrl: clip.thumbnailUrl,
-          startTime: clip.startTime,
-          endTime: clip.endTime,
-          duration: clip.endTime - clip.startTime,
-          meetingTitle: clip.meeting.title,
+          startTime: clip.startTime || clip.startTimeSeconds,
+          endTime: clip.endTime || clip.endTimeSeconds,
+          duration: (clip.endTime || clip.endTimeSeconds) - (clip.startTime || clip.startTimeSeconds),
+          meetingTitle: meeting?.title || 'Unknown Meeting',
           createdAt: clip.createdAt
         }
       };
 
-      // Include transcript if permitted
-      if (decoded.includeTranscript) {
-        const transcript = await videoIntelligenceService.getTranscriptSegments(
-          clip.meetingId,
-          clip.startTime,
-          clip.endTime
-        );
-        response.clip.transcript = transcript;
+      // Include transcript if permitted (stub - VideoIntelligenceService doesn't have this method)
+      if (decoded.includeTranscript && clip.transcriptSegment) {
+        response.clip.transcript = clip.transcriptSegment;
       }
 
       res.json(response);

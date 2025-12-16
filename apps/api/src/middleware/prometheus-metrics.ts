@@ -160,7 +160,7 @@ export function prometheusMetricsMiddleware(
 /**
  * Metrics endpoint
  */
-export const metricsRouter = Router();
+export const metricsRouter: Router = Router();
 
 metricsRouter.get('/metrics', async (req: Request, res: Response) => {
   try {

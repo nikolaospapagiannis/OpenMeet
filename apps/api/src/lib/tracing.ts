@@ -7,8 +7,6 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
 import {
   trace,
   context,
@@ -18,6 +16,32 @@ import {
   Context,
 } from '@opentelemetry/api';
 import { logger } from './logger';
+
+// Conditional imports for potentially missing modules
+let Resource: any;
+let SemanticResourceAttributes: any;
+
+try {
+  const resources = require('@opentelemetry/resources');
+  Resource = resources.Resource;
+} catch {
+  Resource = class { constructor() {} };
+}
+
+try {
+  const semanticConventions = require('@opentelemetry/semantic-conventions');
+  SemanticResourceAttributes = semanticConventions.SemanticResourceAttributes || semanticConventions.SEMRESATTRS_SERVICE_NAME && {
+    SERVICE_NAME: semanticConventions.SEMRESATTRS_SERVICE_NAME,
+    SERVICE_VERSION: semanticConventions.SEMRESATTRS_SERVICE_VERSION,
+    DEPLOYMENT_ENVIRONMENT: semanticConventions.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
+  };
+} catch {
+  SemanticResourceAttributes = {
+    SERVICE_NAME: 'service.name',
+    SERVICE_VERSION: 'service.version',
+    DEPLOYMENT_ENVIRONMENT: 'deployment.environment',
+  };
+}
 
 let sdk: NodeSDK | null = null;
 let tracer: Tracer;

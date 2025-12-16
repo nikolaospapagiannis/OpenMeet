@@ -5,7 +5,7 @@
 
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { Express, Request, Response, NextFunction } from 'express';
+import { Express, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import { logger } from './logger';
 
 /**
@@ -37,10 +37,9 @@ export function initializeErrorMonitoring(app?: Express): void {
 
         // Express instrumentation
         ...(app ? [
-          new Sentry.Integrations.Express({ app }),
           nodeProfilingIntegration(),
         ] : []),
-      ],
+      ] as any,
 
       // Before send hook - customize error data
       beforeSend(event, hint) {
@@ -100,7 +99,7 @@ export function sentryTracingHandler() {
 /**
  * Sentry error handler middleware
  */
-export function sentryErrorHandler() {
+export function sentryErrorHandler(): ErrorRequestHandler {
   return Sentry.Handlers.errorHandler({
     shouldHandleError(error) {
       // Capture all errors with status code >= 500

@@ -7,7 +7,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Get platform overview stats

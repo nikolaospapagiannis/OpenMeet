@@ -90,12 +90,10 @@ export class HRDataService {
     identifier: string,
     organizationId: string
   ): Promise<Employee | null> {
-    const cacheKey = `hr:employee:${identifier}`;
-
     // Check cache first
     if (this.cacheService) {
-      const cached = await this.cacheService.get(cacheKey);
-      if (cached) return JSON.parse(cached);
+      const cached = await this.cacheService.get<Employee>('hr:employee', identifier);
+      if (cached) return cached;
     }
 
     try {
@@ -144,7 +142,7 @@ export class HRDataService {
 
       // Cache the result
       if (this.cacheService) {
-        await this.cacheService.set(cacheKey, JSON.stringify(employee), this.cacheTTL);
+        await this.cacheService.set('hr:employee', identifier, employee, this.cacheTTL);
       }
 
       return employee;
@@ -162,11 +160,9 @@ export class HRDataService {
     organizationId: string,
     daysBack: number = 90
   ): Promise<EmployeeEngagement | null> {
-    const cacheKey = `hr:engagement:${employeeId}:${daysBack}`;
-
     if (this.cacheService) {
-      const cached = await this.cacheService.get(cacheKey);
-      if (cached) return JSON.parse(cached);
+      const cached = await this.cacheService.get<EmployeeEngagement>('hr:engagement', `${employeeId}:${daysBack}`);
+      if (cached) return cached;
     }
 
     try {
@@ -263,7 +259,7 @@ export class HRDataService {
 
       // Cache the result
       if (this.cacheService) {
-        await this.cacheService.set(cacheKey, JSON.stringify(engagement), this.cacheTTL);
+        await this.cacheService.set('hr:engagement', `${employeeId}:${daysBack}`, engagement, this.cacheTTL);
       }
 
       return engagement;
@@ -397,7 +393,6 @@ export class HRDataService {
 
       // Filter to ensure both participants are in the meeting
       const actualOneOnOnes = oneOnOnes.filter(m =>
-        m.participants.length === 2 ||
         m.title.toLowerCase().includes('1:1') ||
         m.title.toLowerCase().includes('one on one')
       );

@@ -8,7 +8,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { scimService } from '../services/scim-service';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 /**
  * SCIM Bearer Token Authentication Middleware

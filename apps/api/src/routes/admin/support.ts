@@ -8,7 +8,7 @@ import { PrismaClient, TicketStatus, TicketPriority } from '@prisma/client';
 import { requirePermission, requireRole, auditAdminAction } from '../../middleware/admin-auth';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 /**

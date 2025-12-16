@@ -8,7 +8,7 @@ import { PrismaClient, OrgStatus, OrgTier } from '@prisma/client';
 import { requirePermission, auditAdminAction } from '../../middleware/admin-auth';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // List all organizations with pagination and filters

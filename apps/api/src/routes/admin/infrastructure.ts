@@ -11,7 +11,7 @@ import { getQueueService, getRedis } from '../../services/registry';
 import { JobType } from '../../services/queue';
 import os from 'os';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Get system health overview

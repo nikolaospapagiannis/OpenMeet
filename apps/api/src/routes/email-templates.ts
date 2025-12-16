@@ -7,9 +7,12 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, EmailTemplateType } from '@prisma/client';
 import winston from 'winston';
 import { emailService } from '../services/email';
-import { authenticate, authorize } from '../middleware/auth';
+import { authMiddleware as authenticate, requireRole } from '../middleware/auth';
 
-const router = Router();
+// Helper to create authorize middleware
+const authorize = (role: string) => requireRole([role, 'admin', 'owner']);
+
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 const logger = winston.createLogger({

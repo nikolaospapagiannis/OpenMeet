@@ -49,22 +49,13 @@ const publishEventSchema = z.object({
     'alert:triggered',
     'system:health_change',
   ] as const),
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
   metadata: z.object({
     userId: z.string().optional(),
     sessionId: z.string().optional(),
     source: z.string().optional(),
   }).optional(),
 });
-
-// Extended request interface with auth data
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    organizationId: string;
-    systemRole?: string;
-  };
-}
 
 export function createAnalyticsRealtimeRouter(redis: Redis): Router {
   const router = Router();
@@ -77,7 +68,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    * - Regular admins: their organization only
    * - Super admins: global view with breakdown
    */
-  router.get('/concurrent-users', async (req: AuthenticatedRequest, res: Response) => {
+  router.get('/concurrent-users', async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user) {
@@ -119,6 +110,16 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
         });
       } else {
         // Organization-specific stats for regular admins
+        if (!user.organizationId) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'NO_ORGANIZATION',
+              message: 'User has no associated organization',
+            },
+          });
+        }
+
         const orgCount = await concurrentUsersService.getOrganizationCount(
           user.organizationId
         );
@@ -159,7 +160,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    */
   router.get(
     '/concurrent-users/organization/:orgId',
-    async (req: AuthenticatedRequest, res: Response) => {
+    async (req: Request, res: Response) => {
       try {
         const user = req.user;
         if (!user) {
@@ -231,7 +232,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    */
   router.get(
     '/concurrent-users/user/:userId',
-    async (req: AuthenticatedRequest, res: Response) => {
+    async (req: Request, res: Response) => {
       try {
         const user = req.user;
         if (!user) {
@@ -263,7 +264,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
 
         const isOnline = await concurrentUsersService.isUserOnline(
           userId,
-          user.organizationId
+          user.organizationId || ''
         );
 
         return res.json({
@@ -291,7 +292,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    * GET /health
    * Get real-time services health status
    */
-  router.get('/health', async (req: AuthenticatedRequest, res: Response) => {
+  router.get('/health', async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user) {
@@ -380,7 +381,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    * Publish an analytics event (internal/service use)
    * This endpoint is for services to publish events
    */
-  router.post('/events/publish', async (req: AuthenticatedRequest, res: Response) => {
+  router.post('/events/publish', async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user) {
@@ -409,6 +410,16 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
       const { type, data, metadata } = validation.data;
 
       // Publish the event
+      if (!user.organizationId) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'NO_ORGANIZATION',
+            message: 'User has no associated organization',
+          },
+        });
+      }
+
       await analyticsEventPublisher.publish(
         user.organizationId,
         type as AnalyticsEventType,
@@ -449,7 +460,7 @@ export function createAnalyticsRealtimeRouter(redis: Redis): Router {
    * GET /websocket-info
    * Get WebSocket connection information
    */
-  router.get('/websocket-info', async (req: AuthenticatedRequest, res: Response) => {
+  router.get('/websocket-info', async (req: Request, res: Response) => {
     try {
       const user = req.user;
       if (!user) {

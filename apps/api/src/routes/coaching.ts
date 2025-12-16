@@ -10,7 +10,7 @@ import { coachingScorecardService } from '../services/CoachingScorecardService';
 import { logger } from '../utils/logger';
 import { Counter, Histogram } from 'prom-client';
 
-const router = Router();
+const router: Router = Router();
 const coachingService = coachingScorecardService;
 
 // Metrics

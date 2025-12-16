@@ -9,7 +9,7 @@ import { requirePermission, requireRole, auditAdminAction } from '../../middlewa
 import { logger } from '../../utils/logger';
 import bcrypt from 'bcryptjs';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // List all users with pagination and filters

@@ -12,7 +12,7 @@ import IndustryTemplateService from '../services/ai/IndustryModelTemplates';
 import { authMiddleware as authenticate, requireRole } from '../middleware/auth';
 import winston from 'winston';
 
-const router = Router();
+const router: Router = Router();
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',

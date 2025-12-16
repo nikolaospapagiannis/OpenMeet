@@ -87,7 +87,7 @@ Object.values(WorkflowJobType).forEach((jobType) => {
  * Process template application
  */
 const processApplyTemplate = async (job: Job) => {
-  const { templateId, meetingId, variableValues, organizationId } = job.data;
+  const { templateId, meetingId, variableValues, organizationId: _organizationId } = job.data;
 
   logger.info('Processing template application', {
     jobId: job.id,

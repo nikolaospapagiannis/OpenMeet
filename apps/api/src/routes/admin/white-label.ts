@@ -13,7 +13,7 @@ import { requireRole, auditAdminAction } from '../../middleware/admin-auth';
 import { logger } from '../../utils/logger';
 import { whiteLabelService } from '../../services/WhiteLabelService';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Configure multer for asset uploads

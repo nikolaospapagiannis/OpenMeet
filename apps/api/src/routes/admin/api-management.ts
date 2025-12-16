@@ -25,7 +25,7 @@ type OrgApiKeyWithOrganization = Prisma.OrgApiKeyGetPayload<{
   include: { organization: { select: { id: true; name: true; slug: true } } };
 }>;
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Constants for API key generation

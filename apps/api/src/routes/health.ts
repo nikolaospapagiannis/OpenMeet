@@ -7,7 +7,7 @@ import { Router, Request, Response } from 'express';
 import { HealthChecker } from '../lib/health-checker';
 import { logger } from '../lib/logger';
 
-const router = Router();
+const router: Router = Router();
 
 // Initialize health checker (will be configured with dependencies in index.ts)
 let healthChecker: HealthChecker;

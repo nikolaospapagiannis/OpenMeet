@@ -98,12 +98,10 @@ export class CRMDataService {
    * Get deal data from local database or CRM
    */
   async getDeal(dealId: string, organizationId: string): Promise<CRMDeal | null> {
-    const cacheKey = `crm:deal:${dealId}`;
-
     // Check cache first
     if (this.cacheService) {
-      const cached = await this.cacheService.get(cacheKey);
-      if (cached) return JSON.parse(cached);
+      const cached = await this.cacheService.get<CRMDeal>('crm:deal', dealId);
+      if (cached) return cached;
     }
 
     try {
@@ -120,7 +118,7 @@ export class CRMDataService {
 
         // Cache the result
         if (this.cacheService) {
-          await this.cacheService.set(cacheKey, JSON.stringify(deal), this.cacheTTL);
+          await this.cacheService.set('crm:deal', dealId, deal, this.cacheTTL);
         }
 
         return deal;
@@ -136,7 +134,7 @@ export class CRMDataService {
         const sfDeal = await this.fetchSalesforceDeal(dealId, organizationId);
         if (sfDeal) {
           if (this.cacheService) {
-            await this.cacheService.set(cacheKey, JSON.stringify(sfDeal), this.cacheTTL);
+            await this.cacheService.set('crm:deal', dealId, sfDeal, this.cacheTTL);
           }
           return sfDeal;
         }
@@ -152,7 +150,7 @@ export class CRMDataService {
         const hsDeal = await this.fetchHubSpotDeal(dealId, organizationId);
         if (hsDeal) {
           if (this.cacheService) {
-            await this.cacheService.set(cacheKey, JSON.stringify(hsDeal), this.cacheTTL);
+            await this.cacheService.set('crm:deal', dealId, hsDeal, this.cacheTTL);
           }
           return hsDeal;
         }
@@ -239,7 +237,6 @@ export class CRMDataService {
           { title: { contains: 'support', mode: 'insensitive' } },
           { title: { contains: 'issue', mode: 'insensitive' } },
           { title: { contains: 'problem', mode: 'insensitive' } },
-          { tags: { hasSome: ['support', 'issue', 'bug'] } },
         ],
         participants: {
           some: {
@@ -267,7 +264,7 @@ export class CRMDataService {
         customerId,
         severity: this.calculateSeverity(sentiment, meeting.title),
         description: meeting.description || undefined,
-        category: this.categorizeSupport(meeting.title, meeting.tags),
+        category: this.categorizeSupport(meeting.title, meeting.metadata),
       };
     });
   }
@@ -499,7 +496,9 @@ export class CRMDataService {
   /**
    * Helper: Categorize support issue
    */
-  private categorizeSupport(title: string, tags: string[]): string {
+  private categorizeSupport(title: string, metadata?: any): string {
+    // Extract tags from metadata if available
+    const tags = metadata?.tags || [];
     if (tags.includes('bug') || title.toLowerCase().includes('bug')) return 'bug';
     if (tags.includes('feature') || title.toLowerCase().includes('feature')) return 'feature_request';
     if (title.toLowerCase().includes('performance')) return 'performance';
@@ -520,20 +519,21 @@ export class CRMDataService {
       const integration = await this.prisma.integration.findFirst({
         where: {
           organizationId,
-          provider: 'salesforce',
-          status: 'active',
+          type: 'salesforce',
+          isActive: true,
         },
       });
 
-      if (!integration || !integration.credentials) {
+      if (!integration || !integration.accessToken) {
         logger.debug('No active Salesforce integration found', { organizationId });
         return null;
       }
 
-      const credentials = integration.credentials as {
-        accessToken: string;
-        refreshToken: string;
-        instanceUrl: string;
+      const settings = integration.settings as any;
+      const credentials = {
+        accessToken: integration.accessToken,
+        refreshToken: integration.refreshToken || '',
+        instanceUrl: settings?.instanceUrl || '',
       };
 
       // Create jsforce connection
@@ -607,19 +607,19 @@ export class CRMDataService {
       const integration = await this.prisma.integration.findFirst({
         where: {
           organizationId,
-          provider: 'hubspot',
-          status: 'active',
+          type: 'hubspot',
+          isActive: true,
         },
       });
 
-      if (!integration || !integration.credentials) {
+      if (!integration || !integration.accessToken) {
         logger.debug('No active HubSpot integration found', { organizationId });
         return null;
       }
 
-      const credentials = integration.credentials as {
-        accessToken: string;
-        refreshToken: string;
+      const credentials = {
+        accessToken: integration.accessToken,
+        refreshToken: integration.refreshToken || '',
       };
 
       // Fetch deal from HubSpot API
@@ -706,20 +706,21 @@ export class CRMDataService {
       const integration = await this.prisma.integration.findFirst({
         where: {
           organizationId,
-          provider: 'salesforce',
-          status: 'active',
+          type: 'salesforce',
+          isActive: true,
         },
       });
 
-      if (!integration || !integration.credentials) {
+      if (!integration || !integration.accessToken) {
         logger.debug('No active Salesforce integration found', { organizationId });
         return null;
       }
 
-      const credentials = integration.credentials as {
-        accessToken: string;
-        refreshToken: string;
-        instanceUrl: string;
+      const settings = integration.settings as any;
+      const credentials = {
+        accessToken: integration.accessToken,
+        refreshToken: integration.refreshToken || '',
+        instanceUrl: settings?.instanceUrl || '',
       };
 
       // Create jsforce connection
@@ -800,19 +801,19 @@ export class CRMDataService {
       const integration = await this.prisma.integration.findFirst({
         where: {
           organizationId,
-          provider: 'hubspot',
-          status: 'active',
+          type: 'hubspot',
+          isActive: true,
         },
       });
 
-      if (!integration || !integration.credentials) {
+      if (!integration || !integration.accessToken) {
         logger.debug('No active HubSpot integration found', { organizationId });
         return null;
       }
 
-      const credentials = integration.credentials as {
-        accessToken: string;
-        refreshToken: string;
+      const credentials = {
+        accessToken: integration.accessToken,
+        refreshToken: integration.refreshToken || '',
       };
 
       // Fetch company (account) details including custom contract properties

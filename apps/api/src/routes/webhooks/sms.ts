@@ -8,7 +8,7 @@ import { SmsService } from '../../services/sms';
 import winston from 'winston';
 import twilio from 'twilio';
 
-const router = Router();
+const router: Router = Router();
 const smsService = new SmsService();
 
 const logger = winston.createLogger({

@@ -20,7 +20,7 @@ import { createProductFeedbackAnalyzer } from '../services/ai/predictions/Produc
 import { createPredictiveInsightsService } from '../services/ai/PredictiveInsightsService';
 import winston from 'winston';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 const logger = winston.createLogger({

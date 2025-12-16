@@ -42,7 +42,7 @@ const redis = new Redis({
   enableReadyCheck: false,
 });
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth and admin middleware to all routes
 router.use(authMiddleware);

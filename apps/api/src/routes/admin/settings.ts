@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
 import { EmailService } from '../../services/email';
 import { StorageService } from '../../services/storage';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Encryption key from environment (must be 32 bytes for AES-256)

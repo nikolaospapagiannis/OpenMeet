@@ -1,48 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 
-// GET /api/users/me - Get current user profile
+// GET /api/users/me - Proxy to backend API for current user profile
 export async function GET(request: NextRequest) {
   try {
-    // Extract user ID from auth token/session
-    // For now, using a header (in production, this would come from JWT/session)
+    // Forward the request to the backend API
+    const authHeader = request.headers.get('authorization');
     const userId = request.headers.get('x-user-id');
+    const cookies = request.headers.get('cookie');
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    if (userId) {
+      headers['x-user-id'] = userId;
+    }
+    if (cookies) {
+      headers['Cookie'] = cookies;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        avatarUrl: true,
-        role: true,
-        preferences: true,
-        metadata: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+      method: 'GET',
+      headers,
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    const data = await response.json();
 
-    return NextResponse.json(user);
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Error fetching user:', error);
+    console.error('Error proxying to backend API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -50,68 +41,44 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PATCH /api/users/me - Update user preferences
+// PATCH /api/users/me - Proxy to backend API for updating user preferences
 export async function PATCH(request: NextRequest) {
   try {
-    // Extract user ID from auth token/session
+    // Forward the request to the backend API
+    const authHeader = request.headers.get('authorization');
     const userId = request.headers.get('x-user-id');
+    const cookies = request.headers.get('cookie');
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+    if (userId) {
+      headers['x-user-id'] = userId;
+    }
+    if (cookies) {
+      headers['Cookie'] = cookies;
     }
 
     const body = await request.json();
-    const { preferences, firstName, lastName, avatarUrl } = body;
 
-    // Build update data
-    const updateData: any = {};
-
-    if (preferences !== undefined) {
-      // Get existing preferences and merge with new ones
-      const existingUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { preferences: true },
-      });
-
-      const existingPreferences = (existingUser?.preferences as object) || {};
-      updateData.preferences = {
-        ...existingPreferences,
-        ...preferences,
-      };
-    }
-
-    if (firstName !== undefined) updateData.firstName = firstName;
-    if (lastName !== undefined) updateData.lastName = lastName;
-    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
-
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        avatarUrl: true,
-        role: true,
-        preferences: true,
-        metadata: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+    const response = await fetch(`${API_BASE_URL}/api/users/me`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(body),
     });
 
-    return NextResponse.json(user);
+    const data = await response.json();
+
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Error updating user:', error);
+    console.error('Error proxying to backend API:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }

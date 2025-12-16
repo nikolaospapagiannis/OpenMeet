@@ -8,7 +8,7 @@ import { PrismaClient } from '@prisma/client';
 import { requirePermission } from '../../middleware/admin-auth';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Get platform-wide analytics

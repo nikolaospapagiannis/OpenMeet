@@ -10,7 +10,7 @@ import crypto from 'crypto';
 import { requirePermission, auditAdminAction, requireRole } from '../../middleware/admin-auth';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: Router = Router();
 const prisma = new PrismaClient();
 
 // Entity types for audit log storage
@@ -354,7 +354,7 @@ router.post(
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validation.error.errors,
+          details: validation.error.flatten().fieldErrors,
         });
         return;
       }
@@ -506,7 +506,7 @@ router.put(
           action: 'ai_model:update',
           entityType: AI_MODEL_CONFIG_ENTITY,
           entityId: id,
-          changes: newChanges,
+          changes: JSON.parse(JSON.stringify(newChanges)) as Prisma.InputJsonValue,
           ipAddress: req.ip || req.socket.remoteAddress,
           userAgent: req.get('user-agent'),
         },
@@ -1164,7 +1164,7 @@ router.post(
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validation.error.errors,
+          details: validation.error.flatten().fieldErrors,
         });
         return;
       }
@@ -1192,7 +1192,7 @@ router.post(
           action: 'ai_prompt:create',
           entityType: AI_PROMPT_TEMPLATE_ENTITY,
           entityId: data.id,
-          changes: {
+          changes: JSON.parse(JSON.stringify({
             name: data.name,
             description: data.description,
             category: data.category,
@@ -1202,7 +1202,7 @@ router.post(
             modelConfig: data.modelConfig,
             enabled: data.enabled,
             version: data.version,
-          },
+          })) as Prisma.InputJsonValue,
           ipAddress: req.ip || req.socket.remoteAddress,
           userAgent: req.get('user-agent'),
         },
@@ -1527,7 +1527,7 @@ router.put(
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validation.error.errors,
+          details: validation.error.flatten().fieldErrors,
         });
         return;
       }
@@ -1815,7 +1815,7 @@ router.put(
         res.status(400).json({
           success: false,
           error: 'Validation failed',
-          details: validation.error.errors,
+          details: validation.error.flatten().fieldErrors,
         });
         return;
       }

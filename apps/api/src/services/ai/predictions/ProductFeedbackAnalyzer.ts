@@ -136,9 +136,7 @@ export class ProductFeedbackAnalyzer extends BasePredictionService<ProductFeedba
         organizationId,
         scheduledStartAt: { gte: startDate },
         OR: [
-          // Filter by product-related tags
-          { tags: { hasSome: ['product', 'feedback', 'feature-request', 'bug', 'product-feedback'] } },
-          // Also include meetings with product-related titles
+          // Include meetings with product-related titles
           { title: { contains: 'product', mode: 'insensitive' } },
           { title: { contains: 'feedback', mode: 'insensitive' } },
           { title: { contains: 'feature', mode: 'insensitive' } },
@@ -146,7 +144,7 @@ export class ProductFeedbackAnalyzer extends BasePredictionService<ProductFeedba
         ],
       },
       include: {
-        transcripts: true,
+        transcriptContent: true,
         participants: true,
       },
       orderBy: { scheduledStartAt: 'desc' },
@@ -155,13 +153,14 @@ export class ProductFeedbackAnalyzer extends BasePredictionService<ProductFeedba
 
     // Helper to get first transcript from meeting (transcript content/sentiment from metadata JSON)
     const getTranscriptData = (meeting: typeof meetings[number]) => {
-      const transcript = meeting.transcripts?.[0];
-      if (!transcript) return { sentiment: 0, content: '' };
-      // Metadata may contain sentiment and content for in-memory processing
-      const metadata = transcript.metadata as { sentiment?: number; content?: string } | null;
+      const transcriptContent = meeting.transcriptContent?.[0];
+      if (!transcriptContent) return { sentiment: 0, content: '' };
+      // Get content and sentiment from transcript
+      const content = transcriptContent.fullText || '';
+      const metadata = transcriptContent.metadata as { sentiment?: number } | null;
       return {
         sentiment: metadata?.sentiment ?? 0,
-        content: metadata?.content ?? '',
+        content,
       };
     };
 
