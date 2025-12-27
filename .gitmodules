@@ -1,0 +1,4 @@
+[submodule "mobile-apps/nebula-ai-ios-app"]
+	path = mobile-apps/nebula-ai-ios-app
+	url = https://github.com/nikolaospapagiannis/nebula-ai-ios-app.git
+	branch = main
